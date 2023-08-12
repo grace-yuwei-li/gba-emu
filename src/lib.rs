@@ -15,7 +15,6 @@ pub struct GbaCore {
 
 impl Default for GbaCore {
     fn default() -> Self {
-        pretty_env_logger::init();
         Self {
             cpu: Cpu::default(),
             bus: Bus::default(),

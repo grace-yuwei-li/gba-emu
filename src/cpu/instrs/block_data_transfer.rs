@@ -87,7 +87,7 @@ impl Cpu {
         }
     }
 
-    pub fn block_data_transfer(&mut self, bus: &mut Bus, instruction: u32) {
+    pub(super) fn block_data_transfer(&mut self, bus: &mut Bus, instruction: u32) {
         let base_register = instruction.bits(16, 19);
         log::trace!("PUSWL: {:05b} REG: {}", instruction.bits(20, 24), base_register);
 

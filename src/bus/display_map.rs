@@ -1,10 +1,10 @@
-pub struct IoMap {
+pub struct DisplayMap {
     mock: [u8; 0x400],
 }
 
-const BASE_ADDR: usize = 0x4000000;
+const BASE_ADDR: usize = 0x5000000;
 
-impl IoMap {
+impl DisplayMap {
     pub fn new() -> Self {
         Self {
             mock: [0; 0x400]

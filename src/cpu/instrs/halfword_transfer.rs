@@ -1,27 +1,29 @@
-use crate::Cpu;
-use crate::Bus;
-use crate::logging::Targets;
-use crate::utils::AddressableBits;
-use tracing::error;
-use tracing::trace;
+use tracing::{trace, error};
 
-struct HalfwordTransImmFields {
+use crate::{cpu::Cpu, bus::Bus, utils::AddressableBits, logging::Targets};
+
+struct HalfwordTransFields {
     p: bool,
     u: bool,
     w: bool,
     l: bool,
     rn: u32,
     rd: u32,
-    offset: u32,
     s: bool,
     h: bool,
+    offset: u32,
 }
 
-impl HalfwordTransImmFields {
-    fn parse(instruction: u32) -> Self {
-        let offset_high = instruction.bits(8, 11);
-        let offset_low = instruction.bits(0, 3);
-        let offset = offset_high << 4 | offset_low;
+impl HalfwordTransFields {
+    fn parse(instruction: u32, cpu: &Cpu) -> Self {
+        let offset = if instruction.bit(22) == 1 {
+            let offset_high = instruction.bits(8, 11);
+            let offset_low = instruction.bits(0, 3);
+            offset_high << 4 | offset_low
+        } else {
+            let rm = instruction.bits(0, 3);
+            cpu.get_reg(rm as usize)
+        };
 
         Self {
             p: instruction.bit(24) == 1,
@@ -30,9 +32,9 @@ impl HalfwordTransImmFields {
             l: instruction.bit(20) == 1,
             rn: instruction.bits(16, 19),
             rd: instruction.bits(12, 15),
-            offset,
             s: instruction.bit(6) == 1,
             h: instruction.bit(5) == 1,
+            offset,
         }
     }
 }
@@ -45,7 +47,9 @@ impl Cpu {
 
     /// Store halfword
     fn strh(&mut self, bus: &mut Bus, instruction: u32) {
-        let fields = HalfwordTransImmFields::parse(instruction);
+        let fields = HalfwordTransFields::parse(instruction, self);
+
+        trace!(target: Targets::Instr.value(), "STRH");
 
         let final_address = if fields.u {
             self.get_reg(fields.rn as usize) + fields.offset
@@ -74,7 +78,6 @@ impl Cpu {
             error!("UNPREDICTABLE, STHR P=0 and W=1")
         }
 
-        trace!(target: Targets::Instr.value(), "STRH");
     }
 
     fn ldrsb(&mut self, bus: &mut Bus, instruction: u32) {
@@ -87,7 +90,7 @@ impl Cpu {
         todo!()
     }
    
-    pub fn halfword_transfer_immediate(&mut self, bus: &mut Bus, instruction: u32) {
+    pub(super) fn halfword_transfer(&mut self, bus: &mut Bus, instruction: u32) {
         let l = instruction.bit(20);
         let sh = instruction.bits(5, 6);
 

@@ -1,7 +1,7 @@
 mod data_processing;
 mod branch;
 mod block_data_transfer;
-mod halfword_transfer_immediate;
+mod halfword_transfer;
 
 use crate::bus::Bus;
 
@@ -150,10 +150,6 @@ impl Cpu {
         todo!()
     }
 
-    fn halfword_transfer_register(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
     fn single_data_transfer(&mut self, bus: &mut Bus, instruction: u32) {
         todo!()
     }
@@ -199,8 +195,8 @@ impl Cpu {
             MetaInstr::MultiplyLong => Self::multiply_long,
             MetaInstr::SingleDataSwap => Self::single_data_swap,
             MetaInstr::BranchAndExchange => Self::branch_and_exchange,
-            MetaInstr::HalfwordTransReg => Self::halfword_transfer_register,
-            MetaInstr::HalfwordTransImm => Self::halfword_transfer_immediate,
+            MetaInstr::HalfwordTransReg => Self::halfword_transfer,
+            MetaInstr::HalfwordTransImm => Self::halfword_transfer,
             MetaInstr::SingleDataTrans => Self::single_data_transfer,
             MetaInstr::Undefined => Self::undefined,
             MetaInstr::BlockDataTrans => Self::block_data_transfer,

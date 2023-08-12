@@ -100,7 +100,7 @@ impl DataProcessingFields {
         }
     }
 
-    pub fn parse(cpu: &Cpu, instruction: u32) -> DataProcessingFields {
+    fn parse(cpu: &Cpu, instruction: u32) -> DataProcessingFields {
         let is_immediate = (instruction >> 25) & 1 != 0;
 
         let set = (instruction >> 20) & 1 != 0;
@@ -155,7 +155,7 @@ impl Cpu {
         self.set_reg(fields.rd as usize, fields.op2);
     }
 
-    pub fn data_processing(&mut self, bus: &mut Bus, instruction: u32) {
+    pub(super) fn data_processing(&mut self, bus: &mut Bus, instruction: u32) {
         let opcode = (instruction >> 21) & 0xf;
 
         log::trace!("Data processing opcode {:#06b}", opcode);

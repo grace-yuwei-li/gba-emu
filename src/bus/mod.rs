@@ -1,6 +1,8 @@
 mod io_map;
+mod display_map;
 
 use io_map::IoMap;
+use display_map::DisplayMap;
 
 pub struct Bus {
     sys_rom: [u8; 0x4000],
@@ -10,6 +12,7 @@ pub struct Bus {
     game_pak_rom: Vec<u8>,
 
     io_map: IoMap,
+    display_map: DisplayMap,
 }
 
 impl Default for Bus {
@@ -22,6 +25,7 @@ impl Default for Bus {
             game_pak_rom: vec![0; 0x2000000],
 
             io_map: IoMap::new(),
+            display_map: DisplayMap::new(),
         }
     }
 }
@@ -52,6 +56,7 @@ impl Bus {
                 Self::get_u32(&self.game_pak_rom, index)
             },
             0x4000000 ..= 0x40003fe => self.io_map.get(index),
+            0x5000000 ..= 0x50003ff => self.display_map.get(index),
             _ => todo!("index {:#x} not implemented", index),
         }
     }
@@ -72,6 +77,7 @@ impl Bus {
                 Self::set_u32(&mut self.game_pak_rom, index, value);
             },
             0x4000000 ..= 0x40003fe => self.io_map.set(index, value),
+            0x5000000 ..= 0x50003ff => self.display_map.set(index, value),
             _ => todo!("index {:#x} not implemented", index)
         }
     }

@@ -4,7 +4,7 @@ use crate::logging::Targets;
 use tracing::trace;
 
 impl Cpu {
-    pub fn branch(&mut self, _bus: &mut Bus, instruction: u32) {
+    pub(super) fn branch(&mut self, _bus: &mut Bus, instruction: u32) {
         let link = (instruction >> 24) & 1 != 0;
         let offset = instruction & 0xffffff;
         let offset = ((offset << 8) as i32) >> 6;

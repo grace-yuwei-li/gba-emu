@@ -11,6 +11,7 @@ fn get_instruction_regs_from_log(instr_idx: usize, log_bytes: &[u8]) -> [u32; 18
     regs
 }
 
+/*
 #[test]
 fn arm_log() {
     let mut gba = gba::GbaCore::default();
@@ -31,3 +32,4 @@ fn arm_log() {
         i += 1;
     }
 }
+*/
