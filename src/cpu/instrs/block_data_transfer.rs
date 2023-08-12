@@ -15,7 +15,7 @@ impl Cpu {
 
         for i in (0 ..= 15).rev() {
             if instruction.bit(i) == 1 {
-                bus.set(dest_address as usize, self.get_reg(i));
+                bus.set(dest_address, self.get_reg(i));
                 dest_address -= 4;
                 reg_count += 1;
             }

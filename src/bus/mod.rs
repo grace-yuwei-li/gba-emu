@@ -1,4 +1,6 @@
-use crate::ppu::Ppu;
+mod io_map;
+
+use io_map::IoMap;
 
 pub struct Bus {
     sys_rom: [u8; 0x4000],
@@ -7,8 +9,7 @@ pub struct Bus {
 
     game_pak_rom: Vec<u8>,
 
-    ppu: Ppu,
-    // TODO
+    io_map: IoMap,
 }
 
 impl Default for Bus {
@@ -20,7 +21,7 @@ impl Default for Bus {
 
             game_pak_rom: vec![0; 0x2000000],
 
-            ppu: Ppu {}
+            io_map: IoMap::new(),
         }
     }
 }
@@ -39,7 +40,8 @@ impl Bus {
         slice[index .. index + 4].copy_from_slice(&value.to_le_bytes());
     }
 
-    pub fn get(&self, index: usize) -> u32 {
+    pub fn get(&self, index: u32) -> u32 {
+        let index: usize = index.try_into().unwrap();
         match index {
             0x3000000 ..= 0x3007fff => {
                 let index = index - 0x3000000;
@@ -49,11 +51,17 @@ impl Bus {
                 let index = index - 0x8000000;
                 Self::get_u32(&self.game_pak_rom, index)
             },
-            _ => todo!("index {:#x} not implemented", index)
+            0x4000000 ..= 0x40003fe => self.io_map.get(index),
+            _ => todo!("index {:#x} not implemented", index),
         }
     }
 
-    pub fn set(&mut self, index: usize, value: u32) {
+    pub fn get_half(&self, index: u32) -> u16 {
+        self.get(index) as u16
+    }
+
+    pub fn set(&mut self, index: u32, value: u32) {
+        let index: usize = index.try_into().unwrap();
         match index {
             0x3000000 ..= 0x3007fff => {
                 let index = index - 0x3000000;
@@ -63,7 +71,13 @@ impl Bus {
                 let index = index - 0x8000000;
                 Self::set_u32(&mut self.game_pak_rom, index, value);
             },
+            0x4000000 ..= 0x40003fe => self.io_map.set(index, value),
             _ => todo!("index {:#x} not implemented", index)
         }
+    }
+
+    pub fn set_half(&mut self, index: u32, value: u16) {
+        let value = (self.get(index) & 0xffff0000) | value as u32;
+        self.set(index, value)
     }
 }

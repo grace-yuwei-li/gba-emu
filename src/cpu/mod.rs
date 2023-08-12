@@ -111,8 +111,8 @@ impl Cpu {
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
-        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.get_reg(15), bus.get(self.get_reg(15) as usize));
-        self.instr_pipeline[1] = bus.get(self.get_reg(15) as usize);
+        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.get_reg(15), bus.get(self.get_reg(15)));
+        self.instr_pipeline[1] = bus.get(self.get_reg(15));
         self.regs.visible[15] += 4;
 
         if self.instr_pipeline_size == 2 {

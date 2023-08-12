@@ -2,6 +2,7 @@ use crate::Cpu;
 use crate::Bus;
 use crate::logging::Targets;
 use crate::utils::AddressableBits;
+use tracing::error;
 use tracing::trace;
 
 struct HalfwordTransImmFields {
@@ -42,10 +43,38 @@ impl Cpu {
         todo!()
     }
 
+    /// Store halfword
     fn strh(&mut self, bus: &mut Bus, instruction: u32) {
         let fields = HalfwordTransImmFields::parse(instruction);
+
+        let final_address = if fields.u {
+            self.get_reg(fields.rn as usize) + fields.offset
+        } else {
+            self.get_reg(fields.rn as usize) - fields.offset
+        };
+
+        let address = if fields.p {
+            final_address
+        } else {
+            self.get_reg(fields.rn as usize)
+        };
+
+        if address.bit(0) == 0 {
+            bus.set_half(address, self.get_reg(fields.rd as usize) as u16);
+        } else {
+            error!("UNPREDICTABLE, STRH address is not halfword-aligned")
+        }
+
+
+        if !fields.p && !fields.w {
+            self.set_reg(fields.rn as usize, final_address);
+        } else if fields.p && fields.w {
+            self.set_reg(fields.rn as usize, final_address);
+        } else if !fields.p && fields.w {
+            error!("UNPREDICTABLE, STHR P=0 and W=1")
+        }
+
         trace!(target: Targets::Instr.value(), "STRH");
-        todo!()
     }
 
     fn ldrsb(&mut self, bus: &mut Bus, instruction: u32) {

@@ -109,18 +109,6 @@ impl MetaInstr {
 type InstructionFp = fn(&mut Cpu, &mut Bus, u32);
 
 
-struct HalfwordDataTransFields {
-    p: bool,
-    u: bool,
-    w: bool,
-    l: bool,
-    rn: u32,
-    rd: u32,
-    s: bool,
-    h: bool,
-    rm: u32,
-}
-
 impl Cpu {
     pub fn check_cond(&mut self, instruction: u32) -> bool {
         let cond_bits = instruction >> 28;
