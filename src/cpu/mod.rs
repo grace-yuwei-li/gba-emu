@@ -63,6 +63,14 @@ impl Default for Cpu {
 
 impl Cpu {
     fn get_reg(&self, idx: usize) -> u32 {
+        if idx == 15 {
+            self.get_reg_internal(15) - 4
+        } else {
+            self.get_reg_internal(idx)
+        }
+    }
+
+    fn get_reg_internal(&self, idx: usize) -> u32 {
         self.regs.visible[idx]
     }
 
@@ -111,21 +119,17 @@ impl Cpu {
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
-        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.get_reg(15), bus.get(self.get_reg(15)));
-        self.instr_pipeline[1] = bus.get(self.get_reg(15));
+        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.regs.visible[15], bus.get(self.regs.visible[15]));
+        self.instr_pipeline[1] = bus.get(self.regs.visible[15]);
         self.regs.visible[15] += 4;
 
         if self.instr_pipeline_size == 2 {
-            log::trace!("Cycle {} PC {:x} execute instruction {:x}", self.cycle, self.get_reg(15), instruction);
+            log::trace!("Cycle {} PC {:x} execute instruction {:x}", self.cycle, self.regs.visible[15], instruction);
             self.execute(bus, instruction);
         } else {
             self.instr_pipeline_size += 1;
         }
 
         self.cycle += 1;
-    }
-
-    fn get_instr_pc(&self) -> u32 {
-        self.get_reg(15) - 4
     }
 }

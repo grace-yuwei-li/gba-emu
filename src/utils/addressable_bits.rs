@@ -4,10 +4,12 @@ pub trait AddressableBits<T> {
 }
 
 impl AddressableBits<u32> for u32 {
+    #[inline]
     fn bit(&self, index: usize) -> u32 {
         (self >> index) & 1
     }
 
+    #[inline]
     fn bits(&self, start: usize, end_inclusive: usize) -> u32 {
         let len = end_inclusive - start + 1;
         (self >> start) & ((1 << len) - 1)
