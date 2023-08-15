@@ -1,8 +1,10 @@
 use std::fmt::Debug;
 use crate::Cpu;
 use crate::Bus;
+use crate::cpu::CPSR;
 use crate::utils::AddressableBits;
 use crate::logging::Targets;
+use tracing::error;
 use tracing::trace;
 
 #[derive(Debug)]
@@ -10,7 +12,8 @@ enum ShiftType {
     LSL,
     LSR,
     ASR,
-    RR,
+    ROR,
+    RRX,
 }
 
 enum ShiftSource {
@@ -39,20 +42,29 @@ struct DataProcessingFields {
     rn: u32,
     rd: u32,
     op2: u32,
+    carry_out: u32, // Single bit
     /// Debug/logging information about how op2 was derived
     op2_info: Option<RegOperandInfo>,
 }
 
 impl DataProcessingFields {
-    fn data_processing_op2_immediate(instruction: u32) -> u32 {
+    fn data_processing_op2_immediate(cpu: &Cpu, instruction: u32) -> (u32, u32, Option<RegOperandInfo>) {
         let imm = instruction & 0xff;
         let rot = (instruction >> 8) & 0xf;
-        imm.rotate_right(2 * rot)
+        let value = imm.rotate_right(2 * rot);
+
+        let carry_out = if rot == 0 {
+            cpu.get_cpsr_bits(CPSR::C)
+        } else {
+            value.bit(31)
+        };
+
+        (value, carry_out, None)
     }
 
-    fn data_processing_op2_shift_reg(cpu: &Cpu, instruction: u32) -> (u32, RegOperandInfo) {
+    fn data_processing_op2_shift_reg(cpu: &Cpu, instruction: u32) -> (u32, u32, Option<RegOperandInfo>) {
         let low_bit = (instruction >> 4) & 1;
-        let shift_type = (instruction >> 5) & 0b11;
+        let shift_type_bits = (instruction >> 5) & 0b11;
         let rm = instruction & 0xf;
         let rm_contents = cpu.get_reg(rm as usize);
 
@@ -75,29 +87,65 @@ impl DataProcessingFields {
             shift_source = ShiftSource::Register(shift_reg);
         };
 
-        match shift_type {
-            0b00 => (rm_contents << shift_amt, RegOperandInfo {
-                shift_type: ShiftType::LSL,
-                shift_source,
-                rm,
-            }),
-            0b01 => (rm_contents >> shift_amt, RegOperandInfo {
-                shift_type: ShiftType::LSR,
-                shift_source,
-                rm,
-            }),
-            0b10 => (((rm_contents as i32) >> shift_amt) as u32, RegOperandInfo {
-                shift_type: ShiftType::ASR,
-                shift_source,
-                rm,
-            }),
-            0b11 => (rm_contents.rotate_right(shift_amt), RegOperandInfo {
-                shift_type: ShiftType::RR,
-                shift_source,
-                rm,
-            }),
+        let op2;
+        let shift_type;
+        let carry_out;
+        match shift_type_bits {
+            0b00 => {
+                shift_type = ShiftType::LSL;
+                if shift_amt == 0 {
+                    op2 = rm_contents;
+                    carry_out = cpu.get_cpsr_bits(CPSR::C);
+                } else {
+                    op2 = rm_contents << shift_amt;
+                    carry_out = rm_contents.bit(32 - shift_amt as usize);
+                }
+            },
+            0b01 => {
+                shift_type = ShiftType::LSR;
+                if shift_amt == 0 {
+                    // Special case - treat shift_amt as 32
+                    op2 = 0;
+                    carry_out = rm_contents.bit(31);
+                } else {
+                    op2 = rm_contents >> shift_amt;
+                    carry_out = rm_contents.bit(shift_amt as usize - 1);
+                }
+            },
+            0b10 => {
+                shift_type = ShiftType::ASR;
+                if shift_amt == 0 {
+                    // Special case - treat shift_amt as 32
+                    op2 = ((rm_contents as i32) >> 31) as u32;
+                    carry_out = rm_contents.bit(31);
+                } else {
+                    op2 = ((rm_contents as i32) >> shift_amt) as u32;
+                    carry_out = rm_contents.bit(shift_amt as usize - 1);
+                }
+            },
+            0b11 => {
+                if shift_amt == 0 {
+                    // Special case - rotate right extended
+                    shift_type = ShiftType::RRX;
+                    let carry_in = cpu.get_cpsr_bits(CPSR::C);
+                    op2 = (rm_contents >> 1).bits(0, 30) | carry_in << 31;
+                    carry_out = rm_contents.bit(0);
+                } else {
+                    shift_type = ShiftType::ROR;
+                    op2 = rm_contents.rotate_right(shift_amt);
+                    carry_out = rm_contents.bit(shift_amt as usize - 1);
+                }
+            },
             _ => unreachable!()
         }
+
+        let reg_op_info = RegOperandInfo {
+            shift_type,
+            shift_source,
+            rm,
+        };
+
+        (op2, carry_out, Some(reg_op_info))
     }
 
     fn parse(cpu: &Cpu, instruction: u32) -> DataProcessingFields {
@@ -108,15 +156,10 @@ impl DataProcessingFields {
         let rn = (instruction >> 16) & 0xf;
         let rd = (instruction >> 12) & 0xf;
 
-        let op2;
-        let op2_info;
-        if is_immediate {
-            op2 = Self::data_processing_op2_immediate(instruction);
-            op2_info = None;
+        let (op2, carry_out, op2_info) = if is_immediate {
+            Self::data_processing_op2_immediate(cpu, instruction)
         } else {
-            let (op2_local, op2_info_local) = Self::data_processing_op2_shift_reg(cpu, instruction);
-            op2 = op2_local;
-            op2_info = Some(op2_info_local);
+            Self::data_processing_op2_shift_reg(cpu, instruction)
         };
 
         DataProcessingFields {
@@ -125,19 +168,41 @@ impl DataProcessingFields {
             rd,
             op2,
             op2_info,
+            carry_out,
         }
     }
 }
 
 impl Cpu {
+    fn dp_teq(&mut self, _bus: &mut Bus, instruction: u32) {
+        let fields = DataProcessingFields::parse(self, instruction);
+
+        trace!(target: Targets::Instr.value(), "TEQ r{}, {:x}", fields.rn, fields.op2);
+
+        if !fields.set {
+            error!("S must be 1"); 
+        }
+
+        let output = self.get_reg(fields.rn as usize) ^ fields.op2;
+
+        let n_flag = output.bit(31);
+        let z_flag = if output == 0 { 1 } else { 0 };
+        let c_flag = fields.carry_out;
+
+        self.set_flag(CPSR::N, n_flag == 1);
+        self.set_flag(CPSR::Z, z_flag == 1);
+        self.set_flag(CPSR::C, c_flag == 1);
+    }
+
     fn dp_orr(&mut self, _bus: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(self, instruction);
+
+        trace!(target: Targets::Instr.value(), "ORR r{}, r{}, {:x}", fields.rd, fields.rn, fields.op2);
 
         if fields.set {
             todo!("Status bits for SET not implemented")
         }
 
-        trace!(target: Targets::Instr.value(), "ORR r{}, r{}, {:x}", fields.rd, fields.rn, fields.op2);
 
         let output = self.get_reg(fields.rn as usize) | fields.op2;
         self.set_reg(fields.rd as usize, output);
@@ -161,6 +226,7 @@ impl Cpu {
         log::trace!("Data processing opcode {:#06b}", opcode);
 
         match opcode {
+            0b1001 => self.dp_teq(bus, instruction),
             0b1100 => self.dp_orr(bus, instruction),
             0b1101 => self.dp_mov(bus, instruction),
             0b0000 ..= 0b1111 => todo!("opcode {:#06b} isn't implemented yet", opcode),

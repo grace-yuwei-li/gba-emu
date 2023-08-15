@@ -1,6 +1,7 @@
 mod instrs;
 
 use crate::bus::Bus;
+use crate::utils::AddressableBits;
 
 
 enum State {
@@ -8,6 +9,7 @@ enum State {
     Thumb,
 }
 
+#[derive(Debug)]
 enum Mode {
     User,
     System,
@@ -99,6 +101,19 @@ impl Cpu {
         }
     }
 
+    fn set_flag(&mut self, flag: CPSR, value: bool) {
+        match flag {
+            CPSR::M => unimplemented!(),
+            CPSR::T => self.cpsr = self.cpsr.set_bit(5, value),
+            CPSR::F => self.cpsr = self.cpsr.set_bit(6, value),
+            CPSR::I => self.cpsr = self.cpsr.set_bit(7, value),
+            CPSR::V => self.cpsr = self.cpsr.set_bit(28, value),
+            CPSR::C => self.cpsr = self.cpsr.set_bit(29, value),
+            CPSR::Z => self.cpsr = self.cpsr.set_bit(30, value),
+            CPSR::N => self.cpsr = self.cpsr.set_bit(31, value),
+        }
+    }
+
     fn flush_pipeline(&mut self) {
         self.instr_pipeline_size = 0;
     }
@@ -108,7 +123,7 @@ impl Cpu {
         self.regs.visible[13] = 0x3007f00;
         self.regs.visible[15] = 0x8000000;
         self.cpsr = 0xdf;
-        self.mode = Mode::System;
+        //self.mode = Mode::System;
 
         // sp_usr/sys = 0x3007f00
         // sp_irq = 0x3007fa0
@@ -131,5 +146,12 @@ impl Cpu {
         }
 
         self.cycle += 1;
+    }
+
+    pub fn in_privileged_mode(&self) -> bool {
+        match self.mode {
+            Mode::User => false,
+            _ => true,
+        }
     }
 }

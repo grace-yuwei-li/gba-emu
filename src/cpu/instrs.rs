@@ -2,8 +2,10 @@ mod data_processing;
 mod branch;
 mod block_data_transfer;
 mod halfword_transfer;
+mod psr_transfer;
 
 use crate::bus::Bus;
+use crate::utils::AddressableBits;
 
 use super::Cpu;
 use super::CPSR;
@@ -12,6 +14,7 @@ use log;
 #[derive(Debug, PartialEq, Eq)]
 enum MetaInstr {
     DataProcessing,
+    PsrTransfer,
     Multiply,
     MultiplyLong,
     SingleDataSwap,
@@ -31,9 +34,10 @@ enum MetaInstr {
 impl MetaInstr {
     /// Returns masks for bits in (high, low) format.
     /// High bits are 20-27 and low bits are 7-4.
-    fn bitmask(&self) -> (u32, u32) {
+    fn bit_format(&self) -> (u32, u32) {
         match *self {
             Self::DataProcessing => (0b0000_0000, 0b0000),
+            Self::PsrTransfer => unimplemented!(),
             Self::Multiply => (0b0000_0000, 0b1001),
             Self::MultiplyLong => (0b0000_1000, 0b1001),
             Self::SingleDataSwap => (0b0001_0000, 0b1001),
@@ -51,9 +55,10 @@ impl MetaInstr {
         }
     }
 
-    fn bitformat(&self) -> (u32, u32) {
+    fn bit_mask(&self) -> (u32, u32) {
         match *self {
             Self::DataProcessing => (0b1100_0000, 0b0000),
+            Self::PsrTransfer => unimplemented!(),
             Self::Multiply => (0b1111_1100, 0b1111),
             Self::MultiplyLong => (0b1111_1000, 0b1111),
             Self::SingleDataSwap => (0b1111_1011, 0b1111),
@@ -90,15 +95,26 @@ impl MetaInstr {
             Self::CoprocDataTrans,
             Self::CoprocDataOp,
             Self::CoprocRegTrans,
+            Self::PsrTransfer,
             Self::DataProcessing,
         ];
 
         for meta_instr in instrs.into_iter() {
-            let (high_fmt, low_fmt) = meta_instr.bitformat();
-            let (high_msk, low_msk) = meta_instr.bitmask();
+            if meta_instr != Self::PsrTransfer {
+                let (high_mask, low_mask) = meta_instr.bit_mask();
+                let (high_fmt, low_fmt) = meta_instr.bit_format();
 
-            if high_bits & high_fmt == high_msk && low_bits & low_fmt == low_msk {
-                return Some(meta_instr);
+                if high_bits & high_mask == high_fmt && low_bits & low_mask == low_fmt {
+                    return Some(meta_instr);
+                }
+            } else {
+                // PSR-specific check
+                let opcode = instruction.bits(21, 24);
+                let s = instruction.bit(20);
+                let opcode_only_sets_flags = (0b1000 ..= 0b1011).contains(&opcode);
+                if instruction.bits(26, 27) == 0 && opcode_only_sets_flags && s == 0 {
+                    return Some(meta_instr);
+                }
             }
         }
 
@@ -191,6 +207,7 @@ impl Cpu {
 
         match meta_instr {
             MetaInstr::DataProcessing => Self::data_processing,
+            MetaInstr::PsrTransfer => Self::psr_transfer,
             MetaInstr::Multiply => Self::multiply,
             MetaInstr::MultiplyLong => Self::multiply_long,
             MetaInstr::SingleDataSwap => Self::single_data_swap,
@@ -272,10 +289,10 @@ mod tests {
 
     #[test]
     fn decode_arm_data_processing() {
-        let teq_needs_s = |instr: u32| {
+        let is_not_psr = |instr: u32| {
             let opcode = (instr >> 21) & 0xf;
             let s = (instr >> 20) & 1;
-            !(opcode == 0b1001 && s == 0)
+            !((0b1000 ..= 0b1011).contains(&opcode) && s == 0)
         };
         let reg_controlled_shift_needs_bit_7_low = |instr: u32| {
             let is_shift = (instr >> 25) & 1 == 0;
@@ -289,7 +306,7 @@ mod tests {
             }
         };
         let cond = |instr: u32| {
-            teq_needs_s(instr) && reg_controlled_shift_needs_bit_7_low(instr)
+            is_not_psr(instr) && reg_controlled_shift_needs_bit_7_low(instr)
         };
 
         test_decode_arm_cond(
@@ -438,5 +455,13 @@ mod tests {
     fn decode_lsl() {
         let instr = MetaInstr::decode_arm( 0xe1a00c00 ).unwrap();
         assert_eq!(instr, MetaInstr::DataProcessing);
+    }
+
+    #[test_log::test]
+    fn decode_psr_not_teq() {
+        // This instruction was being decoded to DataProcessing (TEQ)
+        // it should be LSL instead.
+        let instr = MetaInstr::decode_arm( 0b1110_0011_0010_1000_1111_0001_0000_0000 ).unwrap();
+        assert_eq!(instr, MetaInstr::PsrTransfer);
     }
 }

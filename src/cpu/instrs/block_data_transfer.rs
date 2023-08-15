@@ -1,6 +1,5 @@
 use crate::Cpu;
 use crate::Bus;
-use crate::cpu::Mode;
 use crate::cpu::State;
 use crate::logging::Targets;
 use crate::utils::AddressableBits;
