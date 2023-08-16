@@ -40,17 +40,7 @@ impl HalfwordTransFields {
 }
 
 impl Cpu {
-    fn ldrh(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Arm.value(), "LDRH");
-        todo!()
-    }
-
-    /// Store halfword
-    fn strh(&mut self, bus: &mut Bus, instruction: u32) {
-        let fields = HalfwordTransFields::parse(instruction, self);
-
-        trace!(target: Targets::Arm.value(), "STRH");
-
+    fn addressing_mode_2(&self, fields: &HalfwordTransFields) -> (u32, u32) {
         let final_address = if fields.u {
             self.get_reg(fields.rn as usize) + fields.offset
         } else {
@@ -62,6 +52,40 @@ impl Cpu {
         } else {
             self.get_reg(fields.rn as usize)
         };
+
+        (address, final_address)
+    }
+
+    fn ldrh(&mut self, bus: &mut Bus, instruction: u32) {
+        let fields = HalfwordTransFields::parse(instruction, self);
+
+        trace!(target: Targets::Arm.value(), "LDRH");
+
+        let (address, final_address) = self.addressing_mode_2(&fields);
+
+        if address.bit(0) == 0 {
+            let val = bus.get_half(address);
+            self.set_reg(fields.rd as usize, val as u32);
+        } else {
+            error!("UNPREDICTABLE, LDRH address is not halfword-aligned")
+        }
+
+        if !fields.p && !fields.w {
+            self.set_reg(fields.rn as usize, final_address);
+        } else if fields.p && fields.w {
+            self.set_reg(fields.rn as usize, final_address);
+        } else if !fields.p && fields.w {
+            error!("UNPREDICTABLE, STHR P=0 and W=1")
+        }
+    }
+
+    /// Store halfword
+    fn strh(&mut self, bus: &mut Bus, instruction: u32) {
+        let fields = HalfwordTransFields::parse(instruction, self);
+
+        trace!(target: Targets::Arm.value(), "STRH");
+
+        let (address, final_address) = self.addressing_mode_2(&fields);
 
         if address.bit(0) == 0 {
             bus.set_half(address, self.get_reg(fields.rd as usize) as u16);

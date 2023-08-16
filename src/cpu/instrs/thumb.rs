@@ -1,8 +1,7 @@
 use tracing::trace;
 
-use crate::{bus::Bus, utils::AddressableBits, logging::Targets};
+use crate::{bus::Bus, utils::AddressableBits, logging::Targets, cpu::{Cpu, CPSR}};
 
-use super::{Cpu, CPSR};
 
 type InstructionFpThumb = fn(&mut Cpu, &mut Bus, u16);
 

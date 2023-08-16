@@ -216,6 +216,22 @@ impl Cpu {
         self.set_flag(CPSR::C, c_flag == 1);
     }
 
+    fn cmp(&mut self, _bus: &mut Bus, instruction: u32) {
+        let fields = DataProcessingFields::parse(self, instruction);
+
+        trace!(target: Targets::Arm.value(), "CMP r{}, {:x}", fields.rn, fields.op2);
+
+        let op1 = self.get_reg(fields.rn as usize);
+        let (output, borrow) = op1.overflowing_sub(fields.op2);
+
+        self.set_flag(CPSR::N, output.bit(31) == 1);
+        self.set_flag(CPSR::Z, output == 0);
+        self.set_flag(CPSR::C, !borrow);
+
+        let overflow = (op1.bit(31) != fields.op2.bit(31)) && (op1.bit(31) != output.bit(31));
+        self.set_flag(CPSR::V, overflow);
+    }
+
     fn orr(&mut self, _bus: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(self, instruction);
 
@@ -256,6 +272,7 @@ impl Cpu {
             0b0100 => self.add(bus, instruction),
             0b1000 => self.tst(bus, instruction),
             0b1001 => self.teq(bus, instruction),
+            0b1010 => self.cmp(bus, instruction),
             0b1100 => self.orr(bus, instruction),
             0b1101 => self.mov(bus, instruction),
             0b0000 ..= 0b1111 => todo!("opcode {:#06b} isn't implemented yet", opcode),

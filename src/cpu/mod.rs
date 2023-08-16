@@ -1,5 +1,4 @@
 mod instrs;
-mod thumb;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;

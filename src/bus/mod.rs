@@ -9,6 +9,8 @@ pub struct Bus {
     ew_ram: [u8; 0x40000],
     iw_ram: [u8; 0x8000],
 
+    vram: Vec<u8>,
+
     game_pak_rom: Vec<u8>,
 
     io_map: IoMap,
@@ -21,6 +23,8 @@ impl Default for Bus {
             sys_rom: [0; 0x4000],
             ew_ram: [0; 0x40000],
             iw_ram: [0; 0x8000],
+
+            vram: vec![0; 0x18000],
 
             game_pak_rom: vec![0; 0x2000000],
 
@@ -51,12 +55,13 @@ impl Bus {
                 let index = index - 0x3000000;
                 Self::get_u32(&self.iw_ram, index)
             }
+            0x4000000 ..= 0x40003fe => self.io_map.get(index),
+            0x5000000 ..= 0x50003ff => self.display_map.get(index),
+            0x6000000 ..= 0x6017fff => Self::get_u32(&self.vram, index - 0x6000000),
             0x8000000 ..= 0x9ffffff => {
                 let index = index - 0x8000000;
                 Self::get_u32(&self.game_pak_rom, index)
             },
-            0x4000000 ..= 0x40003fe => self.io_map.get(index),
-            0x5000000 ..= 0x50003ff => self.display_map.get(index),
             _ => todo!("index {:#x} not implemented", index),
         }
     }
@@ -72,12 +77,13 @@ impl Bus {
                 let index = index - 0x3000000;
                 Self::set_u32(&mut self.iw_ram, index, value);
             },
+            0x4000000 ..= 0x40003fe => self.io_map.set(index, value),
+            0x5000000 ..= 0x50003ff => self.display_map.set(index, value),
+            0x6000000 ..= 0x6017fff => Self::set_u32(&mut self.vram, index - 0x6000000, value),
             0x8000000 ..= 0x9ffffff => {
                 let index = index - 0x8000000;
                 Self::set_u32(&mut self.game_pak_rom, index, value);
             },
-            0x4000000 ..= 0x40003fe => self.io_map.set(index, value),
-            0x5000000 ..= 0x50003ff => self.display_map.set(index, value),
             _ => todo!("index {:#x} not implemented", index)
         }
     }

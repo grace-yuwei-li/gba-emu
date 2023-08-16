@@ -10,7 +10,7 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let mut gba = gba::GbaCore::default();
-    let bytes = include_bytes!("../tests/roms/arm.gba");
+    let bytes = include_bytes!("../tests/roms/panda.gba");
 
     gba.load_rom(bytes);
     gba.skip_bios();
