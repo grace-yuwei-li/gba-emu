@@ -1,10 +1,13 @@
 mod data_processing;
 mod branch;
+mod branch_and_exchange;
 mod block_data_transfer;
 mod halfword_transfer;
 mod psr_transfer;
+mod single_data_transfer;
 
 use crate::bus::Bus;
+use crate::cpu::State;
 use crate::utils::AddressableBits;
 
 use super::Cpu;
@@ -44,7 +47,7 @@ impl MetaInstr {
             Self::BranchAndExchange => (0b0001_0010, 0b0001),
             Self::HalfwordTransReg => (0b0000_0000, 0b1001),
             Self::HalfwordTransImm => (0b0000_0100, 0b1001),
-            Self::SingleDataTrans => (0b0110_0000, 0b0000),
+            Self::SingleDataTrans => (0b0100_0000, 0b0000),
             Self::Undefined => (0b0110_0000, 0b0001),
             Self::BlockDataTrans => (0b1000_0000, 0b0000),
             Self::Branch => (0b1010_0000, 0b0000),
@@ -65,7 +68,7 @@ impl MetaInstr {
             Self::BranchAndExchange => (0b1111_1111, 0b1111),
             Self::HalfwordTransReg => (0b1110_0100, 0b1001),
             Self::HalfwordTransImm => (0b1110_0100, 0b1001),
-            Self::SingleDataTrans => (0b1110_0000, 0b0000),
+            Self::SingleDataTrans => (0b1100_0000, 0b0000),
             Self::Undefined => (0b1110_0000, 0b0001),
             Self::BlockDataTrans => (0b1110_0000, 0b0000),
             Self::Branch => (0b1110_0000, 0b0000),
@@ -122,7 +125,7 @@ impl MetaInstr {
     }
 }
 
-type InstructionFp = fn(&mut Cpu, &mut Bus, u32);
+pub type InstructionFp = fn(&mut Cpu, &mut Bus, u32);
 
 
 impl Cpu {
@@ -161,14 +164,6 @@ impl Cpu {
     fn single_data_swap(&mut self, bus: &mut Bus, instruction: u32) {
         todo!()
     }
-    
-    fn branch_and_exchange(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn single_data_transfer(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
 
     fn undefined(&mut self, bus: &mut Bus, instruction: u32) {
         todo!()
@@ -191,7 +186,7 @@ impl Cpu {
     }
 
     fn unimplemented_instruction(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!("Unimplemented instruction")
+        todo!("Unimplemented instruction {:032b}", instruction)
     }
 
     fn decode_arm(&mut self, instruction: u32) -> InstructionFp {
@@ -226,14 +221,23 @@ impl Cpu {
     }
 
     pub fn execute(&mut self, bus: &mut Bus, instruction: u32) {
-        if !self.check_cond(instruction) {
-            log::trace!("Cond check failed for instruction {:#034b}", instruction);
-            return;
-        }
+        match self.get_state() {
+            State::ARM => {
+                if !self.check_cond(instruction) {
+                    log::trace!("Cond check failed for instruction {:#034b}", instruction);
+                    return;
+                }
 
-        log::trace!("Executing instruction {:08x}", instruction);
-        let fp = self.decode_arm(instruction);
-        fp(self, bus, instruction)
+                log::trace!("Executing ARM instruction {:08x}", instruction);
+                let fp = self.decode_arm(instruction);
+                fp(self, bus, instruction)
+            },
+            State::Thumb => {
+                log::trace!("Executing THUMB instruction {:04x}", instruction as u16);
+                let fp = self.decode_thumb(instruction as u16);
+                fp(self, bus, instruction as u16)
+            }
+        }
     }
 }
 

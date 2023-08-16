@@ -41,7 +41,7 @@ impl HalfwordTransFields {
 
 impl Cpu {
     fn ldrh(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Instr.value(), "LDRH");
+        trace!(target: Targets::Arm.value(), "LDRH");
         todo!()
     }
 
@@ -49,7 +49,7 @@ impl Cpu {
     fn strh(&mut self, bus: &mut Bus, instruction: u32) {
         let fields = HalfwordTransFields::parse(instruction, self);
 
-        trace!(target: Targets::Instr.value(), "STRH");
+        trace!(target: Targets::Arm.value(), "STRH");
 
         let final_address = if fields.u {
             self.get_reg(fields.rn as usize) + fields.offset
@@ -81,12 +81,12 @@ impl Cpu {
     }
 
     fn ldrsb(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Instr.value(), "LDRSB");
+        trace!(target: Targets::Arm.value(), "LDRSB");
         todo!()
     }
 
     fn ldrsh(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Instr.value(), "LDRSH");
+        trace!(target: Targets::Arm.value(), "LDRSH");
         todo!()
     }
    

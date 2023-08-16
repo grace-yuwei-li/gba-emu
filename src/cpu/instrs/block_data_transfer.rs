@@ -14,7 +14,7 @@ impl Cpu {
         let mut address = start_address;
         let mut reg_count = 0;
 
-        trace!(target: Targets::Instr.value(), "LDMFD r{}, {:b}", base_register, instruction.bits(0, 15));
+        trace!(target: Targets::Arm.value(), "LDMFD r{}, {:b}", base_register, instruction.bits(0, 15));
 
         if base_register == 15 {
             error!("UNPREDICTABLE");
@@ -36,11 +36,12 @@ impl Cpu {
             let value = bus.get(address);
             self.set_reg(15, value & 0xffff_fffe);
 
-            self.state = if value & 1 == 0 {
+            let state = if value & 1 == 0 {
                 State::ARM
             } else {
                 State::Thumb
             };
+            self.set_state(state);
 
             // Flush after a write
             self.flush_pipeline();
@@ -61,7 +62,7 @@ impl Cpu {
         let mut dest_address = self.get_reg(base_register as usize) - 4;
         let mut reg_count = 0;
 
-        trace!(target: Targets::Instr.value(), "STMFD r{}, {:b}", base_register, instruction.bits(0, 15));
+        trace!(target: Targets::Arm.value(), "STMFD r{}, {:b}", base_register, instruction.bits(0, 15));
 
         if base_register == 15 {
             error!("UNPREDICTABLE");

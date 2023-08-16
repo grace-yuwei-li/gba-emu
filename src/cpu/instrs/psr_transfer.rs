@@ -35,15 +35,15 @@ impl Cpu {
     }
 
     fn msr_imm(&mut self, but: &mut Bus, instruction: u32) {
-        let unalloc_mask = 0x07ffff00;
-        let user_mask = 0xf8000000;
+        let unalloc_mask = 0x0fffff00;
+        let user_mask = 0xf0000000;
         let priv_mask = 0x0000000f;
         let state_mask = 0x00000020;
 
         let fields = MsrImmFields::parse(instruction, self);
         let field_mask = fields.field_mask;
 
-        if (fields.operand & unalloc_mask != 0) {
+        if fields.operand & unalloc_mask != 0 {
             todo!("unpredictable")
         }
 

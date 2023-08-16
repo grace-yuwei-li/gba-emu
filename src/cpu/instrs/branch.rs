@@ -14,7 +14,7 @@ impl Cpu {
         }
 
         let dest = self.get_reg(15).wrapping_add_signed(offset);
-        trace!(target: Targets::Instr.value(), "B{} {:x}", if link { "L" } else { "" }, dest);
+        trace!(target: Targets::Arm.value(), "B{} {:x}", if link { "L" } else { "" }, dest);
 
         self.set_reg(15, dest);
         self.flush_pipeline();

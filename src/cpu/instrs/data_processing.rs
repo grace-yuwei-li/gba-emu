@@ -6,6 +6,7 @@ use crate::utils::AddressableBits;
 use crate::logging::Targets;
 use tracing::error;
 use tracing::trace;
+use tracing::warn;
 
 #[derive(Debug)]
 enum ShiftType {
@@ -174,14 +175,35 @@ impl DataProcessingFields {
 }
 
 impl Cpu {
-    fn dp_teq(&mut self, _bus: &mut Bus, instruction: u32) {
+    fn add(&mut self, _bus: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(self, instruction);
 
-        trace!(target: Targets::Instr.value(), "TEQ r{}, {:x}", fields.rn, fields.op2);
+        trace!(target: Targets::Arm.value(), "ADD r{}, r{}, {:x}", fields.rd, fields.rn, fields.op2);
 
-        if !fields.set {
-            error!("S must be 1"); 
+        if fields.set {
+            todo!();
         }
+
+        let output = self.get_reg(fields.rn as usize) + fields.op2;
+        self.set_reg(fields.rd as usize, output);
+    }
+
+    fn tst(&mut self, _bus: &mut Bus, instruction: u32) {
+        let fields = DataProcessingFields::parse(self, instruction);
+
+        trace!(target: Targets::Arm.value(), "TST r{}, {:x}", fields.rn, fields.op2);
+
+        let output = self.get_reg(fields.rn as usize) & fields.op2;
+
+        self.set_flag(CPSR::N, output.bit(31) == 1);
+        self.set_flag(CPSR::Z, if output == 0 { true } else { false });
+        self.set_flag(CPSR::C, fields.carry_out == 1);
+    }
+
+    fn teq(&mut self, _bus: &mut Bus, instruction: u32) {
+        let fields = DataProcessingFields::parse(self, instruction);
+
+        trace!(target: Targets::Arm.value(), "TEQ r{}, {:x}", fields.rn, fields.op2);
 
         let output = self.get_reg(fields.rn as usize) ^ fields.op2;
 
@@ -194,10 +216,10 @@ impl Cpu {
         self.set_flag(CPSR::C, c_flag == 1);
     }
 
-    fn dp_orr(&mut self, _bus: &mut Bus, instruction: u32) {
+    fn orr(&mut self, _bus: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(self, instruction);
 
-        trace!(target: Targets::Instr.value(), "ORR r{}, r{}, {:x}", fields.rd, fields.rn, fields.op2);
+        trace!(target: Targets::Arm.value(), "ORR r{}, r{}, {:x}", fields.rd, fields.rn, fields.op2);
 
         if fields.set {
             todo!("Status bits for SET not implemented")
@@ -208,16 +230,21 @@ impl Cpu {
         self.set_reg(fields.rd as usize, output);
     }
 
-    fn dp_mov(&mut self, _bus: &mut Bus, instruction: u32) {
+    fn mov(&mut self, _bus: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(self, instruction);
 
         if fields.set {
-            todo!("Status bits for SET not implemented")
+            warn!("Ignoring SET bit in MOV on purpose");
+            //todo!("Status bits for SET not implemented")
         }
 
-        trace!(target: Targets::Instr.value(), "MOV r{}, {:x}, {:?}", fields.rd, fields.op2, fields.op2_info);
+        trace!(target: Targets::Arm.value(), "MOV r{}, {:x}, {:?}", fields.rd, fields.op2, fields.op2_info);
 
         self.set_reg(fields.rd as usize, fields.op2);
+
+        if fields.rd == 15 {
+            self.flush_pipeline();
+        }
     }
 
     pub(super) fn data_processing(&mut self, bus: &mut Bus, instruction: u32) {
@@ -226,9 +253,11 @@ impl Cpu {
         log::trace!("Data processing opcode {:#06b}", opcode);
 
         match opcode {
-            0b1001 => self.dp_teq(bus, instruction),
-            0b1100 => self.dp_orr(bus, instruction),
-            0b1101 => self.dp_mov(bus, instruction),
+            0b0100 => self.add(bus, instruction),
+            0b1000 => self.tst(bus, instruction),
+            0b1001 => self.teq(bus, instruction),
+            0b1100 => self.orr(bus, instruction),
+            0b1101 => self.mov(bus, instruction),
             0b0000 ..= 0b1111 => todo!("opcode {:#06b} isn't implemented yet", opcode),
             _ => unreachable!(),
         }

@@ -1,12 +1,14 @@
 #[derive(Debug)]
 pub enum Targets {
-    Instr
+    Arm,
+    Thumb,
 }
 
 impl Targets {
     pub const fn value(&self) -> &'static str {
         match *self {
-            Targets::Instr => "instruction"
+            Targets::Arm => "ARM instruction",
+            Targets::Thumb => "THUMB instruction",
         }
     }
 }

@@ -1,4 +1,5 @@
 mod instrs;
+mod thumb;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
@@ -37,7 +38,6 @@ enum CPSR {
 }
 
 pub struct Cpu {
-    state: State,
     mode: Mode,
     regs: Regs,
     cpsr: u32,
@@ -50,7 +50,6 @@ pub struct Cpu {
 impl Default for Cpu {
     fn default() -> Self {
         Self {
-            state: State::ARM,
             mode: Mode::User,
             regs: Regs::default(),
             cpsr: 0,
@@ -64,9 +63,27 @@ impl Default for Cpu {
 }
 
 impl Cpu {
+    fn get_state(&self) -> State {
+        if self.get_cpsr_bits(CPSR::T) == 0 {
+            State::ARM
+        } else {
+            State::Thumb
+        }
+    }
+
+    fn set_state(&mut self, state: State) {
+        match state {
+            State::ARM => self.set_flag(CPSR::T, false),
+            State::Thumb => self.set_flag(CPSR::T, true),
+        }
+    }
+
     fn get_reg(&self, idx: usize) -> u32 {
         if idx == 15 {
-            self.get_reg_internal(15) - 4
+            match self.get_state() {
+                State::ARM => self.get_reg_internal(15) - 4,
+                State::Thumb => self.get_reg_internal(15) - 2
+            }
         } else {
             self.get_reg_internal(idx)
         }
@@ -136,7 +153,11 @@ impl Cpu {
         self.instr_pipeline[0] = self.instr_pipeline[1];
         log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.regs.visible[15], bus.get(self.regs.visible[15]));
         self.instr_pipeline[1] = bus.get(self.regs.visible[15]);
-        self.regs.visible[15] += 4;
+
+        match self.get_state() {
+            State::ARM => self.regs.visible[15] += 4,
+            State::Thumb => self.regs.visible[15] += 2,
+        }
 
         if self.instr_pipeline_size == 2 {
             log::trace!("Cycle {} PC {:x} execute instruction {:x}", self.cycle, self.regs.visible[15], instruction);
