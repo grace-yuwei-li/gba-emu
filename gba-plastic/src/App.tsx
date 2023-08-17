@@ -1,20 +1,18 @@
-import { useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 import './App.css';
-import initWasm, { GbaCore } from '../pkg/gba_core';
-
-async function initGba() {
-    await initWasm();
-
-    const gba = new GbaCore();
-    gba.greet('Lukas');
-}
+import { GbaContext } from './Gba';
 
 function App() {
     const [count, setCount] = useState(0);
+    const gba = useContext(GbaContext);
 
-    initGba();
+    useEffect(() => {
+        if (gba) {
+            gba.greet("Lukas");
+        }
+    }, [gba])
 
     return (
         <>
