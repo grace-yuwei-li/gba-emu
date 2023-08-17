@@ -1,0 +1,23 @@
+[package]
+name = "gba-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# A dynamic system library will be produced. This is used when compiling a 
+# dynamic library to be loaded from another language. This output type will 
+# create *.so files on Linux, *.dylib files on macOS, and *.dll files on 
+# Windows.
+crate-type = ["cdylib"]
+
+[dependencies]
+log = "0.4.19"
+num-traits = "0.2.16"
+pretty_env_logger = "0.5.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+wasm-bindgen = "0.2.87"
+
+[dev-dependencies]
+env_logger = "*"
+test-log = "0.2.12"

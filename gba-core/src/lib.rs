@@ -4,10 +4,17 @@ mod ppu;
 mod utils;
 
 pub use utils::logging;
+use wasm_bindgen::prelude::*;
 
 use bus::Bus;
 use cpu::Cpu;
 
+#[wasm_bindgen]
+extern "C" {
+    pub fn alert(s: &str);
+}
+
+#[wasm_bindgen]
 pub struct GbaCore {
     cpu: Cpu,
     bus: Bus,
@@ -19,6 +26,18 @@ impl Default for GbaCore {
             cpu: Cpu::default(),
             bus: Bus::default(),
         }
+    }
+}
+
+#[wasm_bindgen]
+impl GbaCore {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn greet(&self, name: &str) {
+        alert(&format!("Hello, {}!", name));
     }
 }
 
