@@ -64,7 +64,7 @@ impl Cpu {
         let (address, final_address) = self.addressing_mode_2(&fields);
 
         if address.bit(0) == 0 {
-            let val = bus.get_half(address);
+            let val = bus.read_half(address);
             self.set_reg(fields.rd as usize, val as u32);
         } else {
             error!("UNPREDICTABLE, LDRH address is not halfword-aligned")
@@ -88,7 +88,7 @@ impl Cpu {
         let (address, final_address) = self.addressing_mode_2(&fields);
 
         if address.bit(0) == 0 {
-            bus.set_half(address, self.get_reg(fields.rd as usize) as u16);
+            bus.write_half(address, self.get_reg(fields.rd as usize) as u16);
         } else {
             error!("UNPREDICTABLE, STRH address is not halfword-aligned")
         }

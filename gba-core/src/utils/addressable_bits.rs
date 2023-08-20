@@ -42,6 +42,25 @@ impl AddressableBits<u16> for u16 {
     }
 }
 
+impl AddressableBits<u8> for u8 {
+    #[inline]
+    fn bit(&self, index: usize) -> u8 {
+        (self >> index) & 1
+    }
+
+    #[inline]
+    fn bits(&self, start: usize, end_inclusive: usize) -> u8 {
+        let len = end_inclusive - start + 1;
+        (self >> start) & ((1 << len) - 1)
+    }
+
+    #[inline]
+    fn set_bit(self, index: usize, value: bool) -> u8 {
+        let mask = !(1 << index);
+        (self & mask) | (if value { 1 } else { 0 } ) << index
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

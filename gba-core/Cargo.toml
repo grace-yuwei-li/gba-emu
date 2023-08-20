@@ -4,11 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+# "cdylib"
 # A dynamic system library will be produced. This is used when compiling a 
 # dynamic library to be loaded from another language. This output type will 
 # create *.so files on Linux, *.dylib files on macOS, and *.dll files on 
 # Windows.
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 log = "0.4.19"
@@ -17,6 +18,9 @@ pretty_env_logger = "0.5.0"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 wasm-bindgen = "0.2.87"
+js-sys = "0.3.64"
+console_error_panic_hook = "0.1.7"
+web-sys = { version = "0.3.64", features = ["console"] }
 
 [dev-dependencies]
 env_logger = "*"

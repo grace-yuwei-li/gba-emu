@@ -1,5 +1,7 @@
 mod instrs;
 
+use wasm_bindgen::prelude::wasm_bindgen;
+
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
 
@@ -34,6 +36,11 @@ enum CPSR {
     C,
     Z,
     N
+}
+
+#[wasm_bindgen]
+pub struct CpuDetails {
+    pub pc: u32,
 }
 
 pub struct Cpu {
@@ -150,8 +157,8 @@ impl Cpu {
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
-        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.regs.visible[15], bus.get(self.regs.visible[15]));
-        self.instr_pipeline[1] = bus.get(self.regs.visible[15]);
+        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.regs.visible[15], bus.read(self.regs.visible[15]));
+        self.instr_pipeline[1] = bus.read(self.regs.visible[15]);
 
         match self.get_state() {
             State::ARM => self.regs.visible[15] += 4,
@@ -172,6 +179,12 @@ impl Cpu {
         match self.mode {
             Mode::User => false,
             _ => true,
+        }
+    }
+
+    pub fn inspect(&self) -> CpuDetails {
+        CpuDetails {
+            pc: self.get_reg(15)
         }
     }
 }

@@ -23,7 +23,7 @@ impl Cpu {
         for i in 0 ..= 14 {
             if instruction.bit(i) == 1 {
                 reg_count += 1;
-                let value = bus.get(address);
+                let value = bus.read(address);
                 self.set_reg(i, value);
                 address += 4;
             }
@@ -33,7 +33,7 @@ impl Cpu {
             reg_count += 1;
 
             // Write to PC
-            let value = bus.get(address);
+            let value = bus.read(address);
             self.set_reg(15, value & 0xffff_fffe);
 
             let state = if value & 1 == 0 {
@@ -76,7 +76,7 @@ impl Cpu {
         for i in (0 ..= 14).rev() {
             if instruction.bit(i) == 1 {
                 reg_count += 1;
-                bus.set(dest_address, self.get_reg(i));
+                bus.write(dest_address, self.get_reg(i));
                 dest_address -= 4;
             }
         }

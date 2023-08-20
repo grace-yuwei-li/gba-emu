@@ -1,4 +1,4 @@
-use gba;
+use gba_core;
 
 fn get_instruction_regs_from_log(instr_idx: usize, log_bytes: &[u8]) -> [u32; 18] {
     let mut regs = [0u32; 18];

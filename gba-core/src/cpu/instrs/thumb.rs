@@ -219,7 +219,7 @@ impl Cpu {
         trace!(target: Targets::Thumb.value(), "STRH, r{}, {:#x}", rd, address);
 
         if address.bit(0) == 0 {
-            bus.set_half(address, self.get_reg(rd as usize) as u16);
+            bus.write_half(address, self.get_reg(rd as usize) as u16);
         } else {
             todo!("UNPREDICTABLE")
         }

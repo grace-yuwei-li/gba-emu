@@ -1,3 +1,4 @@
+use gba_core::GbaCore;
 use tracing;
 use tracing_subscriber::{self, EnvFilter};
 
@@ -9,7 +10,7 @@ fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let mut gba = gba::GbaCore::default();
+    let mut gba = GbaCore::default();
     let bytes = include_bytes!("../tests/roms/panda.gba");
 
     gba.load_rom(bytes);
