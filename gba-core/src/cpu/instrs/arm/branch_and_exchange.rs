@@ -1,28 +1,32 @@
-use crate::Cpu;
-use crate::Bus;
 use crate::cpu::State;
-use crate::logging::Targets;
 use crate::utils::AddressableBits;
-use tracing::trace;
+use crate::Bus;
+use crate::Cpu;
 
-impl Cpu {
-    pub(super) fn branch_and_exchange(&mut self, _bus: &mut Bus, instruction: u32) {
+use super::ArmInstruction;
+
+pub struct BranchAndExchange;
+impl ArmInstruction for BranchAndExchange {
+    fn execute(&self, cpu: &mut Cpu, _bus: &mut Bus, instruction: u32) {
         let rn = instruction.bits(0, 3);
-
-        trace!(target: Targets::Arm.value(), "BX r{}", rn);
 
         if rn == 15 {
             todo!("undefined behaviour");
         }
 
-        let dest = self.get_reg(rn as usize);
+        let dest = cpu.get_reg(rn as usize);
 
         if dest.bit(0) == 1 {
-            self.set_state(State::Thumb);
+            cpu.set_state(State::Thumb);
         }
 
-        self.set_reg(15, dest & 0xffff_fffe);
+        cpu.set_reg(15, dest & 0xffff_fffe);
 
-        self.flush_pipeline();
+        cpu.flush_pipeline();
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let rn = instruction.bits(0, 3);
+        format!("BX r{}", rn)
     }
 }

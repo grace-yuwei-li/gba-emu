@@ -19,7 +19,7 @@ impl AddressableBits<u32> for u32 {
     #[inline]
     fn set_bit(self, index: usize, value: bool) -> u32 {
         let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 } ) << index
+        (self & mask) | (if value { 1 } else { 0 }) << index
     }
 }
 
@@ -38,7 +38,7 @@ impl AddressableBits<u16> for u16 {
     #[inline]
     fn set_bit(self, index: usize, value: bool) -> u16 {
         let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 } ) << index
+        (self & mask) | (if value { 1 } else { 0 }) << index
     }
 }
 
@@ -57,7 +57,7 @@ impl AddressableBits<u8> for u8 {
     #[inline]
     fn set_bit(self, index: usize, value: bool) -> u8 {
         let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 } ) << index
+        (self & mask) | (if value { 1 } else { 0 }) << index
     }
 }
 

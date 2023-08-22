@@ -3,11 +3,14 @@ mod io_map;
 use io_map::IoMap;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{ppu::Ppu, utils::{get_u32, set_u32}};
+use crate::{
+    ppu::Ppu,
+    utils::{get_u32, set_u32},
+};
 
 #[wasm_bindgen]
 pub struct MemoryDetails {
-    vram: Vec<u8>
+    vram: Vec<u8>,
 }
 
 #[wasm_bindgen]
@@ -60,17 +63,17 @@ impl Bus {
     pub fn read(&self, index: u32) -> u32 {
         let index: usize = index.try_into().unwrap();
         match index {
-            0x3000000 ..= 0x3007fff => {
+            0x3000000..=0x3007fff => {
                 let index = index - 0x3000000;
                 get_u32(&self.iw_ram, index)
             }
-            0x4000000 ..= 0x400005f => self.ppu.read_lcd_io_regs(index),
-            0x4000060 ..= 0x40003fe => self.io_map.read(index),
-            0x5000000 ..= 0x7ffffff => self.ppu.read_simple(index),
-            0x8000000 ..= 0x9ffffff => {
+            0x4000000..=0x400005f => self.ppu.read_lcd_io_regs(index),
+            0x4000060..=0x40003fe => self.io_map.read(index),
+            0x5000000..=0x7ffffff => self.ppu.read_simple(index),
+            0x8000000..=0x9ffffff => {
                 let index = index - 0x8000000;
                 get_u32(&self.game_pak_rom, index)
-            },
+            }
             _ => todo!("index {:#x} not implemented", index),
         }
     }
@@ -82,18 +85,18 @@ impl Bus {
     pub fn write(&mut self, index: u32, value: u32) {
         let index: usize = index.try_into().unwrap();
         match index {
-            0x3000000 ..= 0x3007fff => {
+            0x3000000..=0x3007fff => {
                 let index = index - 0x3000000;
                 set_u32(&mut self.iw_ram, index, value);
-            },
-            0x4000000 ..= 0x400005f => self.ppu.write_lcd_io_regs(index, value),
-            0x4000060 ..= 0x40003fe => self.io_map.write(index, value),
-            0x5000000 ..= 0x7ffffff => self.ppu.write_simple(index, value),
-            0x8000000 ..= 0x9ffffff => {
+            }
+            0x4000000..=0x400005f => self.ppu.write_lcd_io_regs(index, value),
+            0x4000060..=0x40003fe => self.io_map.write(index, value),
+            0x5000000..=0x7ffffff => self.ppu.write_simple(index, value),
+            0x8000000..=0x9ffffff => {
                 let index = index - 0x8000000;
                 set_u32(&mut self.game_pak_rom, index, value);
-            },
-            _ => todo!("index {:#x} not implemented", index)
+            }
+            _ => todo!("index {:#x} not implemented", index),
         }
     }
 

@@ -5,7 +5,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
 
-
 enum State {
     ARM,
     Thumb,
@@ -35,7 +34,7 @@ enum CPSR {
     V,
     C,
     Z,
-    N
+    N,
 }
 
 #[wasm_bindgen]
@@ -88,7 +87,7 @@ impl Cpu {
         if idx == 15 {
             match self.get_state() {
                 State::ARM => self.get_reg_internal(15) - 4,
-                State::Thumb => self.get_reg_internal(15) - 2
+                State::Thumb => self.get_reg_internal(15) - 2,
             }
         } else {
             self.get_reg_internal(idx)
@@ -157,7 +156,12 @@ impl Cpu {
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
-        log::trace!("Cycle {} PC {:x} read value {:x}", self.cycle, self.regs.visible[15], bus.read(self.regs.visible[15]));
+        log::trace!(
+            "Cycle {} PC {:x} read value {:x}",
+            self.cycle,
+            self.regs.visible[15],
+            bus.read(self.regs.visible[15])
+        );
         self.instr_pipeline[1] = bus.read(self.regs.visible[15]);
 
         match self.get_state() {
@@ -166,7 +170,12 @@ impl Cpu {
         }
 
         if self.instr_pipeline_size == 2 {
-            log::trace!("Cycle {} PC {:x} execute instruction {:x}", self.cycle, self.regs.visible[15], instruction);
+            log::trace!(
+                "Cycle {} PC {:x} execute instruction {:x}",
+                self.cycle,
+                self.regs.visible[15],
+                instruction
+            );
             self.execute(bus, instruction);
         } else {
             self.instr_pipeline_size += 1;
@@ -184,7 +193,7 @@ impl Cpu {
 
     pub fn inspect(&self) -> CpuDetails {
         CpuDetails {
-            pc: self.get_reg(15)
+            pc: self.get_reg(15),
         }
     }
 }

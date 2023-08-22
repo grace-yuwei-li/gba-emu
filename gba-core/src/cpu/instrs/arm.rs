@@ -1,16 +1,19 @@
-mod data_processing;
+mod block_data_transfer;
 mod branch;
 mod branch_and_exchange;
-mod block_data_transfer;
+mod data_processing;
 mod halfword_transfer;
 mod psr_transfer;
 mod single_data_transfer;
 
 use crate::bus::Bus;
-use crate::cpu::{State, Cpu, CPSR};
+use crate::cpu::{Cpu, CPSR};
 use crate::utils::AddressableBits;
 
-use log;
+pub trait ArmInstruction {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32);
+    fn disassembly(&self, instruction: u32) -> String;
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum MetaInstr {
@@ -77,7 +80,7 @@ impl MetaInstr {
         }
     }
 
-    pub(super) fn decode_arm(instruction: u32) -> Option<Self> {
+    pub(super) fn decode_arm(instruction: u32) -> Box<dyn ArmInstruction> {
         let high_bits = (instruction >> 20) & 0b1111_1111;
         let low_bits = (instruction >> 4) & 0b1111;
 
@@ -106,25 +109,56 @@ impl MetaInstr {
                 let (high_fmt, low_fmt) = meta_instr.bit_format();
 
                 if high_bits & high_mask == high_fmt && low_bits & low_mask == low_fmt {
-                    return Some(meta_instr);
+                    return meta_instr.get_arm_instruction(instruction);
                 }
             } else {
                 // PSR-specific check
                 let opcode = instruction.bits(21, 24);
                 let s = instruction.bit(20);
-                let opcode_only_sets_flags = (0b1000 ..= 0b1011).contains(&opcode);
+                let opcode_only_sets_flags = (0b1000..=0b1011).contains(&opcode);
                 if instruction.bits(26, 27) == 0 && opcode_only_sets_flags && s == 0 {
-                    return Some(meta_instr);
+                    return meta_instr.get_arm_instruction(instruction);
                 }
             }
         }
 
-        None
+        Box::new(UnimplementedInstruction)
+    }
+
+    fn get_arm_instruction(&self, instruction: u32) -> Box<dyn ArmInstruction> {
+        match *self {
+            Self::DataProcessing => match instruction.bits(21, 24) {
+                0b0100 => Box::new(data_processing::Add),
+                0b1000 => Box::new(data_processing::Tst),
+                0b1001 => Box::new(data_processing::Teq),
+                0b1010 => Box::new(data_processing::Cmp),
+                0b1100 => Box::new(data_processing::Orr),
+                0b1101 => Box::new(data_processing::Mov),
+                0b0000 ..= 0b1111 => todo!(),
+                _ => unreachable!(),
+            }
+            Self::BlockDataTrans => Self::decode_block_data_transfer(instruction),
+            Self::Branch => Box::new(branch::Branch),
+            Self::BranchAndExchange => Box::new(branch_and_exchange::BranchAndExchange),
+            Self::HalfwordTransImm => Self::decode_halfword_transfer(instruction),
+            Self::HalfwordTransReg => Self::decode_halfword_transfer(instruction),
+            Self::PsrTransfer => Self::decode_psr_transfer(instruction),
+            Self::SingleDataTrans => Self::decode_single_data_transfer(instruction),
+            _ => todo!(),
+        }
     }
 }
 
-pub type InstructionFp = fn(&mut Cpu, &mut Bus, u32);
+struct UnimplementedInstruction;
+impl ArmInstruction for UnimplementedInstruction {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        todo!()
+    }
 
+    fn disassembly(&self, _instruction: u32) -> String {
+        "Unimplemented".to_string()
+    }
+}
 
 impl Cpu {
     pub fn check_cond(&mut self, instruction: u32) -> bool {
@@ -143,79 +177,22 @@ impl Cpu {
             0b1001 => self.get_cpsr_bits(CPSR::C) == 0 || self.get_cpsr_bits(CPSR::Z) != 0,
             0b1010 => self.get_cpsr_bits(CPSR::N) == self.get_cpsr_bits(CPSR::V),
             0b1011 => self.get_cpsr_bits(CPSR::N) != self.get_cpsr_bits(CPSR::V),
-            0b1100 => self.get_cpsr_bits(CPSR::Z) == 0 && (self.get_cpsr_bits(CPSR::N) == self.get_cpsr_bits(CPSR::V)),
-            0b1101 => self.get_cpsr_bits(CPSR::Z) != 0 || (self.get_cpsr_bits(CPSR::N) != self.get_cpsr_bits(CPSR::V)),
+            0b1100 => {
+                self.get_cpsr_bits(CPSR::Z) == 0
+                    && (self.get_cpsr_bits(CPSR::N) == self.get_cpsr_bits(CPSR::V))
+            }
+            0b1101 => {
+                self.get_cpsr_bits(CPSR::Z) != 0
+                    || (self.get_cpsr_bits(CPSR::N) != self.get_cpsr_bits(CPSR::V))
+            }
             0b1110 => true,
             0b1111 => unimplemented!(),
             _ => unreachable!(),
         }
     }
 
-    fn multiply(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn multiply_long(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn single_data_swap(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn undefined(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn coprocessor_data_transfer(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn coprocess_data_operation(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn coprocessor_register_transfer(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn software_interrupt(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!()
-    }
-
-    fn unimplemented_instruction(&mut self, bus: &mut Bus, instruction: u32) {
-        todo!("Unimplemented instruction {:032b}", instruction)
-    }
-
-    pub(super) fn decode_arm(&mut self, instruction: u32) -> InstructionFp {
-        let meta_instr = match MetaInstr::decode_arm(instruction) {
-            Some(meta_instr) => meta_instr,
-            None => {
-                log::warn!("Failed to decode arm instruction");
-                return Self::unimplemented_instruction;
-            }
-        };
-
-        log::trace!("Instruction {:08x} decoded to {:?}", instruction, meta_instr);
-
-        match meta_instr {
-            MetaInstr::DataProcessing => Self::data_processing,
-            MetaInstr::PsrTransfer => Self::psr_transfer,
-            MetaInstr::Multiply => Self::multiply,
-            MetaInstr::MultiplyLong => Self::multiply_long,
-            MetaInstr::SingleDataSwap => Self::single_data_swap,
-            MetaInstr::BranchAndExchange => Self::branch_and_exchange,
-            MetaInstr::HalfwordTransReg => Self::halfword_transfer,
-            MetaInstr::HalfwordTransImm => Self::halfword_transfer,
-            MetaInstr::SingleDataTrans => Self::single_data_transfer,
-            MetaInstr::Undefined => Self::undefined,
-            MetaInstr::BlockDataTrans => Self::block_data_transfer,
-            MetaInstr::Branch => Self::branch,
-            MetaInstr::CoprocDataTrans => Self::coprocessor_data_transfer,
-            MetaInstr::CoprocDataOp => Self::coprocess_data_operation,
-            MetaInstr::CoprocRegTrans => Self::coprocessor_register_transfer,
-            MetaInstr::SoftwareInterrupt => Self::software_interrupt,
-        }
+    pub(super) fn decode_arm(&mut self, instruction: u32) -> Box<dyn ArmInstruction> {
+        MetaInstr::decode_arm(instruction) 
     }
 }
 
@@ -244,7 +221,7 @@ mod tests {
             let val = (base_val & !format) | mask;
 
             if !cond(val) {
-                continue
+                continue;
             }
 
             match MetaInstr::decode_arm(val) {
@@ -274,7 +251,7 @@ mod tests {
         let is_not_psr = |instr: u32| {
             let opcode = (instr >> 21) & 0xf;
             let s = (instr >> 20) & 1;
-            !((0b1000 ..= 0b1011).contains(&opcode) && s == 0)
+            !((0b1000..=0b1011).contains(&opcode) && s == 0)
         };
         let reg_controlled_shift_needs_bit_7_low = |instr: u32| {
             let is_shift = (instr >> 25) & 1 == 0;
@@ -287,9 +264,7 @@ mod tests {
                 true
             }
         };
-        let cond = |instr: u32| {
-            is_not_psr(instr) && reg_controlled_shift_needs_bit_7_low(instr)
-        };
+        let cond = |instr: u32| is_not_psr(instr) && reg_controlled_shift_needs_bit_7_low(instr);
 
         test_decode_arm_cond(
             MetaInstr::DataProcessing,
@@ -435,7 +410,7 @@ mod tests {
 
     #[test_log::test]
     fn decode_lsl() {
-        let instr = MetaInstr::decode_arm( 0xe1a00c00 ).unwrap();
+        let instr = MetaInstr::decode_arm(0xe1a00c00).unwrap();
         assert_eq!(instr, MetaInstr::DataProcessing);
     }
 
@@ -443,7 +418,7 @@ mod tests {
     fn decode_psr_not_teq() {
         // This instruction was being decoded to DataProcessing (TEQ)
         // it should be LSL instead.
-        let instr = MetaInstr::decode_arm( 0b1110_0011_0010_1000_1111_0001_0000_0000 ).unwrap();
+        let instr = MetaInstr::decode_arm(0b1110_0011_0010_1000_1111_0001_0000_0000).unwrap();
         assert_eq!(instr, MetaInstr::PsrTransfer);
     }
 }

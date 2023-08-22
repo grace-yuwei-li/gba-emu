@@ -11,7 +11,7 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let mut gba = GbaCore::default();
-    let bytes = include_bytes!("../tests/roms/panda.gba");
+    let bytes = include_bytes!("../tests/roms/armwrestler-gba-fixed.gba");
 
     gba.load_rom(bytes);
     gba.skip_bios();

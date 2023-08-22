@@ -1,6 +1,8 @@
-use tracing::{trace, error};
+use tracing::{error, trace};
 
-use crate::{cpu::Cpu, bus::Bus, utils::AddressableBits, logging::Targets};
+use crate::{bus::Bus, cpu::Cpu, logging::Targets, utils::AddressableBits};
+
+use super::{ArmInstruction, MetaInstr};
 
 struct HalfwordTransFields {
     p: bool,
@@ -11,20 +13,11 @@ struct HalfwordTransFields {
     rd: u32,
     s: bool,
     h: bool,
-    offset: u32,
+    instruction: u32,
 }
 
 impl HalfwordTransFields {
-    fn parse(instruction: u32, cpu: &Cpu) -> Self {
-        let offset = if instruction.bit(22) == 1 {
-            let offset_high = instruction.bits(8, 11);
-            let offset_low = instruction.bits(0, 3);
-            offset_high << 4 | offset_low
-        } else {
-            let rm = instruction.bits(0, 3);
-            cpu.get_reg(rm as usize)
-        };
-
+    fn parse(instruction: u32) -> Self {
         Self {
             p: instruction.bit(24) == 1,
             u: instruction.bit(23) == 1,
@@ -34,95 +27,122 @@ impl HalfwordTransFields {
             rd: instruction.bits(12, 15),
             s: instruction.bit(6) == 1,
             h: instruction.bit(5) == 1,
-            offset,
+            instruction,
         }
     }
-}
 
-impl Cpu {
-    fn addressing_mode_2(&self, fields: &HalfwordTransFields) -> (u32, u32) {
-        let final_address = if fields.u {
-            self.get_reg(fields.rn as usize) + fields.offset
+    fn offset(&self, cpu: &Cpu) -> u32 {
+        if self.instruction.bit(22) == 1 {
+            let offset_high = self.instruction.bits(8, 11);
+            let offset_low = self.instruction.bits(0, 3);
+            offset_high << 4 | offset_low
         } else {
-            self.get_reg(fields.rn as usize) - fields.offset
+            let rm = self.instruction.bits(0, 3);
+            cpu.get_reg(rm as usize)
+        }
+    }
+
+    /// Returns address and final address
+    fn address_mode_2(&self, cpu: &Cpu) -> (u32, u32) {
+        let offset = self.offset(cpu);
+        let final_address = if self.u {
+            cpu.get_reg(self.rn as usize) + offset
+        } else {
+            cpu.get_reg(self.rn as usize) - offset
         };
 
-        let address = if fields.p {
+        let address = if self.p {
             final_address
         } else {
-            self.get_reg(fields.rn as usize)
+            cpu.get_reg(self.rn as usize)
         };
 
         (address, final_address)
     }
+}
 
-    fn ldrh(&mut self, bus: &mut Bus, instruction: u32) {
-        let fields = HalfwordTransFields::parse(instruction, self);
+struct LDRH;
+struct STRH;
+struct LDRSB;
+struct LDRSH;
 
-        trace!(target: Targets::Arm.value(), "LDRH");
+#[inline]
+fn execute_h<F>(cpu: &mut Cpu, bus: &mut Bus, instruction: u32, func: F) 
+where F: FnOnce(&mut Cpu, &mut Bus, usize, u32) -> ()
+{
+    let fields = HalfwordTransFields::parse(instruction);
+    let (address, final_address) = fields.address_mode_2(cpu);
 
-        let (address, final_address) = self.addressing_mode_2(&fields);
+    if address.bit(0) == 0 {
+        func(cpu, bus, fields.rd as usize, address);
+        let val = bus.read_half(address);
+        cpu.set_reg(fields.rd as usize, val as u32);
+    } else {
+        todo!("UNPREDICTABLE, LDRH address is not halfword-aligned")
+    }
 
-        if address.bit(0) == 0 {
+    if !fields.p && !fields.w {
+        cpu.set_reg(fields.rn as usize, final_address);
+    } else if fields.p && fields.w {
+        cpu.set_reg(fields.rn as usize, final_address);
+    } else if !fields.p && fields.w {
+        todo!("UNPREDICTABLE, STHR P=0 and W=1")
+    }
+}
+
+impl ArmInstruction for LDRH {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_h(cpu, bus, instruction, |cpu, bus, rd, address| {
             let val = bus.read_half(address);
-            self.set_reg(fields.rd as usize, val as u32);
-        } else {
-            error!("UNPREDICTABLE, LDRH address is not halfword-aligned")
-        }
-
-        if !fields.p && !fields.w {
-            self.set_reg(fields.rn as usize, final_address);
-        } else if fields.p && fields.w {
-            self.set_reg(fields.rn as usize, final_address);
-        } else if !fields.p && fields.w {
-            error!("UNPREDICTABLE, STHR P=0 and W=1")
-        }
+            cpu.set_reg(rd, val as u32);
+        });
     }
 
-    /// Store halfword
-    fn strh(&mut self, bus: &mut Bus, instruction: u32) {
-        let fields = HalfwordTransFields::parse(instruction, self);
+    fn disassembly(&self, instruction: u32) -> String {
+        format!("LDRH")
+    }
+}
 
-        trace!(target: Targets::Arm.value(), "STRH");
-
-        let (address, final_address) = self.addressing_mode_2(&fields);
-
-        if address.bit(0) == 0 {
-            bus.write_half(address, self.get_reg(fields.rd as usize) as u16);
-        } else {
-            error!("UNPREDICTABLE, STRH address is not halfword-aligned")
-        }
-
-
-        if !fields.p && !fields.w {
-            self.set_reg(fields.rn as usize, final_address);
-        } else if fields.p && fields.w {
-            self.set_reg(fields.rn as usize, final_address);
-        } else if !fields.p && fields.w {
-            error!("UNPREDICTABLE, STHR P=0 and W=1")
-        }
-
+impl ArmInstruction for STRH {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_h(cpu, bus, instruction, |cpu, bus, rd, address| {
+            bus.write_half(address, cpu.get_reg(rd) as u16);
+        });
     }
 
-    fn ldrsb(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Arm.value(), "LDRSB");
+    fn disassembly(&self, instruction: u32) -> String {
+        format!("STRH")
+    }
+}
+
+impl ArmInstruction for LDRSB {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         todo!()
     }
+    fn disassembly(&self, instruction: u32) -> String {
+        "LDRSB".to_string()
+    }
+}
 
-    fn ldrsh(&mut self, bus: &mut Bus, instruction: u32) {
-        trace!(target: Targets::Arm.value(), "LDRSH");
+impl ArmInstruction for LDRSH {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         todo!()
     }
-   
-    pub(super) fn halfword_transfer(&mut self, bus: &mut Bus, instruction: u32) {
+    fn disassembly(&self, instruction: u32) -> String {
+        "LDRSH".to_string()
+    }
+}
+
+impl MetaInstr {
+    pub(super) fn decode_halfword_transfer(instruction: u32) -> Box<dyn ArmInstruction> {
         let l = instruction.bit(20);
         let sh = instruction.bits(5, 6);
 
         match (l, sh) {
-            (0, 0b01) => self.strh(bus, instruction),
-            (1, 0b01) => self.ldrh(bus, instruction),
-            (1, 0b10) => self.ldrsb(bus, instruction),
-            (1, 0b11) => self.ldrsh(bus, instruction),
+            (0, 0b01) => Box::new(STRH),
+            (1, 0b01) => Box::new(LDRH),
+            (1, 0b10) => Box::new(LDRSB),
+            (1, 0b11) => Box::new(LDRSH),
             _ => unreachable!(),
         }
     }

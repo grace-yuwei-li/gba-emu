@@ -3,8 +3,8 @@ mod cpu;
 mod ppu;
 mod utils;
 
-pub use utils::logging;
 pub use utils::js::*;
+pub use utils::logging;
 
 use ppu::PpuDetails;
 use wasm_bindgen::prelude::*;
@@ -53,7 +53,7 @@ impl GbaCore {
         self.cpu.tick(&mut self.bus)
     }
 
-    pub fn load_panda(&mut self) {
+    pub fn load_test_rom(&mut self) {
         let bytes = include_bytes!("../tests/roms/panda.gba");
         self.load_rom(bytes);
     }

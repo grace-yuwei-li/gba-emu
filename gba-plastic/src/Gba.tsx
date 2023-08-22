@@ -18,18 +18,16 @@ const GbaProvider = ({ children }: GbaProviderProps) => {
     const [gba, setGba] = useState<GbaCore | undefined>(undefined);
     useAnimationFrame(() => {
         const start = performance.now();
-        for (let i = 0; i < 10000; i++) {
+        for (let i = 0; i < 1; i++) {
             gba?.tick();
         }
         const elapsed = performance.now() - start;
-
-        console.log(elapsed);
     });
 
     useEffect(() => {
         initGba().then(() => {
             const gba = new GbaCore();
-            gba.load_panda();
+            gba.load_test_rom();
             gba.skip_bios();
             setGba(gba);
         });

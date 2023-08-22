@@ -1,7 +1,11 @@
 use tracing::trace;
 
-use crate::{bus::Bus, utils::AddressableBits, logging::Targets, cpu::{Cpu, CPSR}};
-
+use crate::{
+    bus::Bus,
+    cpu::{Cpu, CPSR},
+    logging::Targets,
+    utils::AddressableBits,
+};
 
 type InstructionFpThumb = fn(&mut Cpu, &mut Bus, u16);
 
@@ -59,7 +63,7 @@ impl ThumbInstr {
                 let format = 0b1111_0000_0000_0000;
                 let mask = 0b1111_0000_0000_0000;
                 instruction & mask == format
-            } 
+            }
             ThumbInstr::AddOffsetToStackPointer => {
                 let format = 0b1011_0000_0000_0000;
                 let mask = 0b1111_1111_0000_0000;
@@ -80,18 +84,36 @@ impl ThumbInstr {
                 let mask = 0b1111_0000_0000_0000;
                 instruction & mask == format
             }
-            ThumbInstr::LoadAddress => format_mask(instruction, 0b1010_0000_0000_0000, 0b1111_0000_0000_0000),
-            ThumbInstr::LoadStoreImmediateOffset => format_mask(instruction, 0b0110_0000_0000_0000, 0b1110_0000_0000_0000),
-            ThumbInstr::LoadStoreRegisterOffset => format_mask(instruction, 0b0101_0000_0000_0000, 0b1111_0010_0000_0000),
-            ThumbInstr::LoadStoreSExByteHalfword => format_mask(instruction, 0b0101_0010_0000_0000, 0b1111_0010_0000_0000),
-            ThumbInstr::PcRelativeLoad => format_mask(instruction, 0b0100_1000_0000_0000, 0b1111_1000_0000_0000),
-            Self::HiRegisterOperationsBranchExchange => format_mask(instruction, 0b0100_0100_0000_0000, 0b1111_1100_0000_0000),
-            Self::AluOperations => format_mask(instruction, 0b0100_0000_0000_0000, 0b1111_1100_0000_0000),
-            Self::MoveCompareAddSubtractImmediate => format_mask(instruction, 0b0010_0000_0000_0000, 0b1110_0000_0000_0000),
-            Self::AddSubtract => format_mask(instruction, 0b0001_1000_0000_0000, 0b1111_1000_0000_0000),
-            Self::MoveShiftedRegister => format_mask(instruction, 0b0000_0000_0000_0000, 0b1110_0000_0000_0000),
-
-            _ => todo!("implement instruction {:#018b}", instruction)
+            ThumbInstr::LoadAddress => {
+                format_mask(instruction, 0b1010_0000_0000_0000, 0b1111_0000_0000_0000)
+            }
+            ThumbInstr::LoadStoreImmediateOffset => {
+                format_mask(instruction, 0b0110_0000_0000_0000, 0b1110_0000_0000_0000)
+            }
+            ThumbInstr::LoadStoreRegisterOffset => {
+                format_mask(instruction, 0b0101_0000_0000_0000, 0b1111_0010_0000_0000)
+            }
+            ThumbInstr::LoadStoreSExByteHalfword => {
+                format_mask(instruction, 0b0101_0010_0000_0000, 0b1111_0010_0000_0000)
+            }
+            ThumbInstr::PcRelativeLoad => {
+                format_mask(instruction, 0b0100_1000_0000_0000, 0b1111_1000_0000_0000)
+            }
+            Self::HiRegisterOperationsBranchExchange => {
+                format_mask(instruction, 0b0100_0100_0000_0000, 0b1111_1100_0000_0000)
+            }
+            Self::AluOperations => {
+                format_mask(instruction, 0b0100_0000_0000_0000, 0b1111_1100_0000_0000)
+            }
+            Self::MoveCompareAddSubtractImmediate => {
+                format_mask(instruction, 0b0010_0000_0000_0000, 0b1110_0000_0000_0000)
+            }
+            Self::AddSubtract => {
+                format_mask(instruction, 0b0001_1000_0000_0000, 0b1111_1000_0000_0000)
+            }
+            Self::MoveShiftedRegister => {
+                format_mask(instruction, 0b0000_0000_0000_0000, 0b1110_0000_0000_0000)
+            }
         }
     }
 
@@ -175,8 +197,8 @@ impl Cpu {
         match opcode {
             0b10 => self.thumb_mov_hi_reg(bus, instruction),
             0b11 => self.thumb_branch_exchange(bus, instruction),
-            0b00 ..= 0b11 => todo!("{:b}", opcode),
-            _ => unreachable!()
+            0b00..=0b11 => todo!("{:b}", opcode),
+            _ => unreachable!(),
         }
     }
 
@@ -196,8 +218,8 @@ impl Cpu {
         let opcode = instruction.bits(11, 12);
         match opcode {
             0b00 => self.thumb_mov_imm(bus, instruction),
-            0b01 ..= 0b11 => todo!(),
-            _ => unreachable!()
+            0b01..=0b11 => todo!(),
+            _ => unreachable!(),
         }
     }
 
@@ -225,14 +247,91 @@ impl Cpu {
         }
     }
 
+    fn pc_relative_load(&mut self, bus: &mut Bus, instruction: u16) {
+        let rd = instruction.bits(8, 10);
+        let imm = instruction.bits(0, 7);
+
+        let address = (self.get_reg(15) & 0xffff_fffc) + imm as u32 * 4;
+        let value = bus.read(address);
+        self.set_reg(rd as usize, value);
+    }
+
+    fn move_shifted_register(&mut self, bus: &mut Bus, instruction: u16) {
+        let opcode = instruction.bits(11, 12);
+        let imm = instruction.bits(6, 10);
+        let rm = instruction.bits(3, 5);
+        let rd = instruction.bits(0, 2);
+
+        match opcode {
+            0b00 => {
+                // LSL
+                if imm == 0 {
+                    self.set_reg(rd as usize, self.get_reg(rm as usize));
+                } else {
+                    self.set_flag(
+                        CPSR::C,
+                        self.get_reg(rm as usize).bit(32 - imm as usize) == 1,
+                    );
+                    self.set_reg(rd as usize, self.get_reg(rm as usize) << imm);
+                }
+                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+            }
+            0b01 => {
+                // LSR
+                if imm == 0 {
+                    self.set_flag(CPSR::C, self.get_reg(rm as usize).bit(31) == 1);
+                    self.set_reg(rd as usize, 0);
+                } else {
+                    self.set_flag(
+                        CPSR::C,
+                        self.get_reg(rm as usize).bit(imm as usize - 1) == 1,
+                    );
+                    self.set_reg(rd as usize, self.get_reg(rm as usize) >> imm);
+                }
+                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+            }
+            0b10 => {
+                // ASR
+                if imm == 0 {
+                    self.set_flag(CPSR::C, self.get_reg(rm as usize).bit(31) == 1);
+                    if self.get_reg(rm as usize).bit(31) == 0 {
+                        self.set_reg(rd as usize, 0);
+                    } else {
+                        self.set_reg(rd as usize, 0xffff_ffff);
+                    }
+                } else {
+                    self.set_flag(
+                        CPSR::C,
+                        self.get_reg(rm as usize).bit(imm as usize - 1) == 1,
+                    );
+                    self.set_reg(
+                        rd as usize,
+                        ((self.get_reg(rm as usize) as i32) >> imm) as u32,
+                    );
+                }
+                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub(super) fn decode_thumb(&self, instruction: u16) -> InstructionFpThumb {
         let thumb_instr = ThumbInstr::decode(instruction);
         match thumb_instr {
             ThumbInstr::LoadStoreHalfword => Self::load_store_halfword,
-            ThumbInstr::MoveCompareAddSubtractImmediate => Self::move_compare_add_subtract_immediate,
-            ThumbInstr::HiRegisterOperationsBranchExchange => Self::hi_register_operations_branch_exchange,
+            ThumbInstr::MoveCompareAddSubtractImmediate => {
+                Self::move_compare_add_subtract_immediate
+            }
+            ThumbInstr::HiRegisterOperationsBranchExchange => {
+                Self::hi_register_operations_branch_exchange
+            }
             ThumbInstr::LoadAddress => Self::load_address,
-            _ => todo!("{:?} {:016b}", thumb_instr, instruction)
+            ThumbInstr::PcRelativeLoad => Self::pc_relative_load,
+            ThumbInstr::MoveShiftedRegister => Self::move_shifted_register,
+            _ => todo!("{:?} {:016b}", thumb_instr, instruction),
         }
     }
 }
