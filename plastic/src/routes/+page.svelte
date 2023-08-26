@@ -1,0 +1,48 @@
+<script>
+	import Debugger from "../components/Debugger.svelte";
+	import GbaTicker from "../components/GbaTicker.svelte";
+	import Screen from "../components/Screen.svelte";
+
+</script>
+
+<GbaTicker />
+<div id="toolbar" />
+<div id="main">
+    <div>
+        <Debugger />
+    </div>
+    <div id="screen-wrapper">
+        <Screen />
+    </div>
+</div>
+
+<style>
+    :global(body) {
+        background-color: #1e1f43;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #toolbar {
+        width: 100%;
+        height: 100px;
+        background-color: purple;
+    }
+
+    #main {
+        flex-grow: 1;
+        display: flex;
+        position: relative;
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    #screen-wrapper {
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>

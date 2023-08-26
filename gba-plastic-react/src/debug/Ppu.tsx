@@ -1,10 +1,10 @@
-import { useContext, useRef, useState } from 'react';
-import { GbaContext } from '../Gba';
+import { useRef, useState } from 'react';
+import { useGba } from '../Gba';
 import useAnimationFrame from '../useAnimationFrame';
 
 const Ppu = () => {
     const [bgMode, setBgMode] = useState<number | undefined>(undefined);
-    const gba = useContext(GbaContext);
+    const gba = useGba();
     const ref = useRef<HTMLCanvasElement>(null);
 
     useAnimationFrame(() => {

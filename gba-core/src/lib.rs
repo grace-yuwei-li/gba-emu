@@ -3,6 +3,8 @@ mod cpu;
 mod ppu;
 mod utils;
 
+use std::collections::HashSet;
+
 pub use utils::js::*;
 pub use utils::logging;
 
@@ -18,6 +20,10 @@ use crate::cpu::CpuDetails;
 pub struct GbaCore {
     cpu: Cpu,
     bus: Bus,
+
+    pub stopped: bool,
+    debugger_enabled: bool,
+    breakpoints: HashSet<u32>,
 }
 
 impl Default for GbaCore {
@@ -25,6 +31,10 @@ impl Default for GbaCore {
         Self {
             cpu: Cpu::default(),
             bus: Bus::default(),
+
+            stopped: false,
+            debugger_enabled: true,
+            breakpoints: HashSet::new(),
         }
     }
 }
@@ -50,7 +60,13 @@ impl GbaCore {
     }
 
     pub fn tick(&mut self) {
-        self.cpu.tick(&mut self.bus)
+        if self.debugger_enabled && self.breakpoints.contains(&self.cpu.get_executing_instruction_pc()) {
+            self.stopped = true;
+        }
+
+        if !self.stopped {
+            self.cpu.tick(&mut self.bus)
+        }
     }
 
     pub fn load_test_rom(&mut self) {
@@ -64,6 +80,30 @@ impl GbaCore {
 
     pub fn skip_bios(&mut self) {
         self.cpu.skip_bios(&self.bus);
+    }
+
+    pub fn reset(self) -> Self {
+        Self {
+            stopped: self.stopped,
+            breakpoints: self.breakpoints,
+            ..Self::default()
+        }
+    }
+
+    pub fn breakpoints(&self) -> Vec<u32> {
+        self.breakpoints.iter().copied().collect()
+    }
+
+    pub fn add_breakpoint(&mut self, breakpoint: u32) {
+        self.breakpoints.insert(breakpoint);
+    }
+
+    pub fn remove_breakpoint(&mut self, breakpoint: u32) {
+        self.breakpoints.remove(&breakpoint);
+    }
+
+    pub fn read_address(&self, address: u32) -> u32 {
+        self.bus.read(address)
     }
 }
 

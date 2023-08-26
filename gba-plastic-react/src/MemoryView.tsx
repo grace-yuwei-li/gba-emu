@@ -1,17 +1,16 @@
-import { useContext, useRef, useState } from 'react';
-import { GbaContext } from './Gba';
+import { useRef } from 'react';
+import { useGba } from './Gba';
 import useAnimationFrame from './useAnimationFrame';
 import { to_canvas_binary_data } from '../pkg/gba_core';
 
 const MemoryView = () => {
     const ref = useRef<HTMLCanvasElement>(null);
 
-    const gba = useContext(GbaContext);
+    const gba = useGba();
     useAnimationFrame((deltaTime: number) => {
         if (deltaTime > 8) {
             //console.warn('frame took too long:', deltaTime);
         }
-        if (!gba) return;
 
         const vram = gba.inspect_memory().vram;
         const data = to_canvas_binary_data(vram);

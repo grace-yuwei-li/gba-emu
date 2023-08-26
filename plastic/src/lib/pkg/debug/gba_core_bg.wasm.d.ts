@@ -1,0 +1,33 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export function __wbg_cpudetails_free(a: number): void;
+export function __wbg_get_cpudetails_pc(a: number): number;
+export function __wbg_set_cpudetails_pc(a: number, b: number): void;
+export function __wbg_gbacore_free(a: number): void;
+export function __wbg_get_gbacore_stopped(a: number): number;
+export function __wbg_set_gbacore_stopped(a: number, b: number): void;
+export function gbacore_new(): number;
+export function gbacore_inspect_cpu(a: number): number;
+export function gbacore_inspect_ppu(a: number): number;
+export function gbacore_inspect_memory(a: number): number;
+export function gbacore_tick(a: number): void;
+export function gbacore_load_test_rom(a: number): void;
+export function gbacore_load_rom(a: number, b: number, c: number): void;
+export function gbacore_skip_bios(a: number): void;
+export function gbacore_reset(a: number): number;
+export function gbacore_breakpoints(a: number, b: number): void;
+export function gbacore_add_breakpoint(a: number, b: number): void;
+export function gbacore_remove_breakpoint(a: number, b: number): void;
+export function gbacore_read_address(a: number, b: number): number;
+export function to_canvas_binary_data(a: number, b: number): number;
+export function __wbg_memorydetails_free(a: number): void;
+export function memorydetails_vram(a: number): number;
+export function __wbg_ppudetails_free(a: number): void;
+export function __wbg_get_ppudetails_bg_mode(a: number): number;
+export function __wbg_set_ppudetails_bg_mode(a: number, b: number): void;
+export function ppudetails_screen(a: number): number;
+export function __wbindgen_malloc(a: number, b: number): number;
+export function __wbindgen_add_to_stack_pointer(a: number): number;
+export function __wbindgen_free(a: number, b: number, c: number): void;
+export function __wbindgen_realloc(a: number, b: number, c: number, d: number): number;

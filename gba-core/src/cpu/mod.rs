@@ -98,6 +98,11 @@ impl Cpu {
         self.regs.visible[idx]
     }
 
+    /// Should be ran before calling .tick()
+    pub fn get_executing_instruction_pc(&self) -> u32 {
+        self.get_reg_internal(15) - 8
+    }
+
     fn set_reg(&mut self, idx: usize, val: u32) {
         self.regs.visible[idx] = val;
     }
