@@ -17,6 +17,7 @@
         for (let i = 0; i < numTicks; i++) {
             $gba?.tick();
         }
+        $gba = $gba;
 
         start = timestamp;
 

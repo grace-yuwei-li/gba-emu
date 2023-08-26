@@ -16,7 +16,7 @@ pub trait ArmInstruction {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum MetaInstr {
+pub enum MetaInstr {
     DataProcessing,
     PsrTransfer,
     Multiply,
@@ -134,7 +134,7 @@ impl MetaInstr {
                 0b1010 => Box::new(data_processing::Cmp),
                 0b1100 => Box::new(data_processing::Orr),
                 0b1101 => Box::new(data_processing::Mov),
-                0b0000 ..= 0b1111 => todo!(),
+                0b0000 ..= 0b1111 => Box::new(TodoInstruction::new_message(format!("DataProcessing opcode: {:b}", instruction.bits(21, 24)))),
                 _ => unreachable!(),
             }
             Self::BlockDataTrans => Self::decode_block_data_transfer(instruction),
@@ -144,7 +144,31 @@ impl MetaInstr {
             Self::HalfwordTransReg => Self::decode_halfword_transfer(instruction),
             Self::PsrTransfer => Self::decode_psr_transfer(instruction),
             Self::SingleDataTrans => Self::decode_single_data_transfer(instruction),
-            _ => todo!(),
+            _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
+        }
+    }
+}
+
+struct TodoInstruction(Option<String>);
+impl TodoInstruction {
+    pub fn new() -> Self {
+        Self(None)
+    }
+
+    pub fn new_message(message: String) -> Self {
+        Self(Some(message))
+    }
+}
+
+impl ArmInstruction for TodoInstruction {
+    fn execute(&self, _: &mut Cpu, _: &mut Bus, _: u32) {
+        todo!()
+    }
+
+    fn disassembly(&self, _: u32) -> String {
+        match &self.0 {
+            None => "TODO".to_string(),
+            Some(msg) => format!("TODO: {}", msg),
         }
     }
 }

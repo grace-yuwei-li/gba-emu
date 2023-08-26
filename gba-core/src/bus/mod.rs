@@ -74,7 +74,7 @@ impl Bus {
                 let index = index - 0x8000000;
                 get_u32(&self.game_pak_rom, index)
             }
-            _ => todo!("index {:#x} not implemented", index),
+            _ => 0 //todo!("index {:#x} not implemented", index),
         }
     }
 

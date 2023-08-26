@@ -6,6 +6,11 @@
 */
 export function to_canvas_binary_data(input: Uint8Array): Uint8ClampedArray;
 /**
+* @param {number} instruction
+* @returns {string}
+*/
+export function disassemble_arm(instruction: number): string;
+/**
 */
 export class CpuDetails {
   free(): void;
@@ -115,12 +120,13 @@ export interface InitOutput {
   readonly gbacore_remove_breakpoint: (a: number, b: number) => void;
   readonly gbacore_read_address: (a: number, b: number) => number;
   readonly to_canvas_binary_data: (a: number, b: number) => number;
-  readonly __wbg_memorydetails_free: (a: number) => void;
-  readonly memorydetails_vram: (a: number) => number;
   readonly __wbg_ppudetails_free: (a: number) => void;
   readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
   readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
   readonly ppudetails_screen: (a: number) => number;
+  readonly disassemble_arm: (a: number, b: number) => void;
+  readonly __wbg_memorydetails_free: (a: number) => void;
+  readonly memorydetails_vram: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

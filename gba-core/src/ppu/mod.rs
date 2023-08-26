@@ -41,9 +41,12 @@ impl Ppu {
     pub fn read_simple(&self, index: usize) -> u32 {
         match index {
             0x5000000..=0x50003ff => get_u32(&self.bg_obj_palette, index - 0x5000000),
+            0x5000400..=0x5ffffff => 0,
             0x6000000..=0x6017fff => get_u32(&self.vram, index - 0x6000000),
+            0x6018000..=0x6ffffff => 0,
             0x7000000..=0x70003ff => get_u32(&self.oam, index - 0x7000000),
-            _ => unreachable!(),
+            0x7000400..=0x7ffffff => 0,
+            _ => unreachable!("{:x}", index),
         }
     }
     pub fn write_simple(&mut self, index: usize, value: u32) {

@@ -1,9 +1,11 @@
+use wasm_bindgen::prelude::wasm_bindgen;
+
 use crate::bus::Bus;
 
 use super::{Cpu, State};
 
-mod arm;
-mod thumb;
+pub mod arm;
+pub mod thumb;
 
 impl Cpu {
     pub fn execute(&mut self, bus: &mut Bus, instruction: u32) {
@@ -25,4 +27,9 @@ impl Cpu {
             }
         }
     }
+}
+
+#[wasm_bindgen]
+pub fn disassemble_arm(instruction: u32) -> String {
+    arm::MetaInstr::decode_arm(instruction).disassembly(instruction)
 }

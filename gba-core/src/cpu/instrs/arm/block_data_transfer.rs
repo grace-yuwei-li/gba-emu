@@ -1,5 +1,5 @@
 use crate::cpu::State;
-use crate::logging::Targets;
+use crate::cpu::instrs::arm::TodoInstruction;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
@@ -125,7 +125,7 @@ impl MetaInstr {
         match arg_pu << 1 | arg_l {
             0b011 => Box::new(LDMFD),
             0b100 => Box::new(STMFD),
-            0b000..=0b111 => todo!("{:03b}", arg_pu << 1 | arg_l),
+            0b000..=0b111 => Box::new(TodoInstruction::new_message(format!("{:03b}", arg_pu << 1 | arg_l))),
             _ => unreachable!(),
         }
     }
