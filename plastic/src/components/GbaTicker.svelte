@@ -1,27 +1,31 @@
-<script>
-	import { gba } from '$lib/gbaStore';
+<script lang="ts">
+	import { gba, init } from '$lib/gbaStore';
 	import { onDestroy, onMount } from 'svelte';
-    import initWasm, { GbaCore } from '$lib/pkg/debug/gba_core';
 
-    const tickGba = () => {
-        const start = performance.now();
-        for (let i = 0; i < 10; i++) {
+    export let clockSpeed: number;
+
+    let start: number;
+
+    const tickGba: FrameRequestCallback = (timestamp) => {
+        if (start === undefined) {
+            start = timestamp; 
+        }
+        const elapsedMillis = timestamp - start;
+
+        const numTicks = Math.ceil(clockSpeed * elapsedMillis / 1000);
+
+        for (let i = 0; i < numTicks; i++) {
             $gba?.tick();
         }
-        const elapsed = performance.now() - start;
 
-        //console.log(`${elapsed} ms elapsed`)
-		//console.log($gba?.inspect_cpu().pc);
+        start = timestamp;
 
         requestAnimationFrame(tickGba);
     }
 
 
 	onMount(async () => {
-        await initWasm();
-        $gba = new GbaCore();
-        $gba.skip_bios();
-        $gba.load_test_rom();
+        await init();
 
         requestAnimationFrame(tickGba);
 

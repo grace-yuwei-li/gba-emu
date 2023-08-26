@@ -1,12 +1,15 @@
-<script>
+<script lang="ts">
 	import Debugger from "../components/Debugger.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
+	import Toolbar from "../components/Toolbar.svelte";
+
+    let clockSpeed: number;
 
 </script>
 
-<GbaTicker />
-<div id="toolbar" />
+<GbaTicker clockSpeed={clockSpeed} />
+<Toolbar bind:clockSpeed={clockSpeed} />
 <div id="main">
     <div>
         <Debugger />
@@ -23,12 +26,6 @@
         height: 100vh;
         display: flex;
         flex-direction: column;
-    }
-
-    #toolbar {
-        width: 100%;
-        height: 100px;
-        background-color: purple;
     }
 
     #main {
