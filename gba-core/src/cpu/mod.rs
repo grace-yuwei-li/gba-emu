@@ -1,30 +1,32 @@
+mod regs;
 mod instrs;
 
+use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::wasm_bindgen;
+use serde::{Serialize, Deserialize};
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
+
+use self::regs::Regs;
 
 enum State {
     ARM,
     Thumb,
 }
 
-#[derive(Debug)]
-enum Mode {
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Mode {
     User,
     System,
     IRQ,
     FIQ,
-    Undef,
-    Abt,
+    Supervisor,
+    Undefined,
+    Abort,
 }
 
-#[derive(Debug, Default)]
-struct Regs {
-    visible: [u32; 16],
-    banked: [u32; 20],
-}
 
 enum CPSR {
     M,
@@ -39,13 +41,38 @@ enum CPSR {
 
 #[wasm_bindgen]
 pub struct CpuDetails {
-    pub pc: u32,
+    regs: Regs,
+    mode: Mode,
+    pub executing_pc: Option<u32>,
+}
+
+#[wasm_bindgen]
+impl CpuDetails {
+    pub fn reg(&self, index: usize, mode: JsValue) -> Option<u32> {
+        let mode: Mode = serde_wasm_bindgen::from_value(mode).ok()?;
+        Some(self.regs.get(index, &mode))
+    }
+
+    pub fn cpsr(&self) -> u32 {
+        self.regs.cpsr
+    }
+
+    pub fn spsr(&self, mode: JsValue) -> Option<u32> {
+        let mode: Mode = serde_wasm_bindgen::from_value(mode).ok()?;
+        Some(self.regs.spsr(&mode))
+    }
+
+    pub fn mode(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.mode).ok().into()
+    }
+
+    pub fn pc(&self) -> u32 {
+        self.regs.get(15, &Mode::User)
+    }
 }
 
 pub struct Cpu {
-    mode: Mode,
     regs: Regs,
-    cpsr: u32,
 
     instr_pipeline: [u32; 2],
     instr_pipeline_size: usize,
@@ -54,16 +81,16 @@ pub struct Cpu {
 
 impl Default for Cpu {
     fn default() -> Self {
-        Self {
-            mode: Mode::User,
+        let mut cpu = Self {
             regs: Regs::default(),
-            cpsr: 0,
 
             instr_pipeline: [0, 0],
             instr_pipeline_size: 0,
 
             cycle: 0,
-        }
+        };
+        cpu.set_mode(Mode::User);
+        cpu
     }
 }
 
@@ -83,6 +110,32 @@ impl Cpu {
         }
     }
 
+    fn get_mode(&self) -> Mode {
+        match self.regs.cpsr.bits(0, 4) {
+            0b10000 => Mode::User,
+            0b10001 => Mode::FIQ,
+            0b10010 => Mode::IRQ,
+            0b10011 => Mode::Supervisor,
+            0b10111 => Mode::Abort,
+            0b11011 => Mode::Undefined,
+            0b11111 => Mode::System,
+            _ => panic!("undefined behaviour, mode {:05b}", self.regs.cpsr.bits(0, 4)),
+        }
+    }
+
+    fn set_mode(&mut self, mode: Mode) {
+        let val = match mode {
+            Mode::User => 0b10000,
+            Mode::FIQ => 0b10001,
+            Mode::IRQ => 0b10010,
+            Mode::Supervisor => 0b10011,
+            Mode::Abort => 0b10111,
+            Mode::Undefined => 0b11011,
+            Mode::System => 0b11111,
+        };
+        self.regs.cpsr = val;
+    }
+
     fn get_reg(&self, idx: usize) -> u32 {
         if idx == 15 {
             match self.get_state() {
@@ -95,7 +148,7 @@ impl Cpu {
     }
 
     fn get_reg_internal(&self, idx: usize) -> u32 {
-        self.regs.visible[idx]
+        self.regs.get(idx, &self.get_mode())
     }
 
     /// Should be ran before calling .tick()
@@ -104,40 +157,37 @@ impl Cpu {
     }
 
     fn set_reg(&mut self, idx: usize, val: u32) {
-        self.regs.visible[idx] = val;
+        let mode = &self.get_mode();
+        *self.regs.get_mut(idx, mode) = val;
     }
 
-    pub fn get_all_regs(&self) -> Vec<u32> {
-        let mut out = self.regs.visible.to_vec();
-        out.push(self.cpsr);
-        // SPSR is same as CPSR
-        out.push(self.cpsr);
-        out
+    pub fn set_reg_with_mode(&mut self, idx: usize, mode: Mode, val: u32) {
+        *self.regs.get_mut(idx, &mode) = val;
     }
 
     fn get_cpsr_bits(&self, field: CPSR) -> u32 {
         match field {
-            CPSR::M => self.cpsr & 0b11111,
-            CPSR::T => (self.cpsr >> 5) & 1,
-            CPSR::F => (self.cpsr >> 6) & 1,
-            CPSR::I => (self.cpsr >> 7) & 1,
-            CPSR::V => (self.cpsr >> 28) & 1,
-            CPSR::C => (self.cpsr >> 29) & 1,
-            CPSR::Z => (self.cpsr >> 30) & 1,
-            CPSR::N => (self.cpsr >> 31) & 1,
+            CPSR::M => self.regs.cpsr & 0b11111,
+            CPSR::T => (self.regs.cpsr >> 5) & 1,
+            CPSR::F => (self.regs.cpsr >> 6) & 1,
+            CPSR::I => (self.regs.cpsr >> 7) & 1,
+            CPSR::V => (self.regs.cpsr >> 28) & 1,
+            CPSR::C => (self.regs.cpsr >> 29) & 1,
+            CPSR::Z => (self.regs.cpsr >> 30) & 1,
+            CPSR::N => (self.regs.cpsr >> 31) & 1,
         }
     }
 
     fn set_flag(&mut self, flag: CPSR, value: bool) {
         match flag {
             CPSR::M => unimplemented!(),
-            CPSR::T => self.cpsr = self.cpsr.set_bit(5, value),
-            CPSR::F => self.cpsr = self.cpsr.set_bit(6, value),
-            CPSR::I => self.cpsr = self.cpsr.set_bit(7, value),
-            CPSR::V => self.cpsr = self.cpsr.set_bit(28, value),
-            CPSR::C => self.cpsr = self.cpsr.set_bit(29, value),
-            CPSR::Z => self.cpsr = self.cpsr.set_bit(30, value),
-            CPSR::N => self.cpsr = self.cpsr.set_bit(31, value),
+            CPSR::T => self.regs.cpsr.mut_bit(5, value),
+            CPSR::F => self.regs.cpsr.mut_bit(6, value),
+            CPSR::I => self.regs.cpsr.mut_bit(7, value),
+            CPSR::V => self.regs.cpsr.mut_bit(28, value),
+            CPSR::C => self.regs.cpsr.mut_bit(29, value),
+            CPSR::Z => self.regs.cpsr.mut_bit(30, value),
+            CPSR::N => self.regs.cpsr.mut_bit(31, value),
         }
     }
 
@@ -145,16 +195,14 @@ impl Cpu {
         self.instr_pipeline_size = 0;
     }
 
-    pub fn skip_bios(&mut self, bus: &Bus) {
+    pub fn skip_bios(&mut self) {
         //self.regs.visible[0] = 0xca5;
-        self.regs.visible[13] = 0x3007f00;
-        self.regs.visible[15] = 0x8000000;
-        self.cpsr = 0xdf;
+        *self.regs.get_mut(13, &Mode::User) = 0x3007f00;
+        *self.regs.get_mut(13, &Mode::IRQ) = 0x3007fa0;
+        *self.regs.get_mut(13, &Mode::Supervisor) = 0x3007fe0;
+        *self.regs.get_mut(15, &Mode::User) = 0x8000000;
+        self.regs.cpsr = 0xdf;
         //self.mode = Mode::System;
-
-        // sp_usr/sys = 0x3007f00
-        // sp_irq = 0x3007fa0
-        // sp_supervisor = 0x3007fe0
     }
 
     pub fn tick(&mut self, bus: &mut Bus) {
@@ -164,23 +212,17 @@ impl Cpu {
         log::trace!(
             "Cycle {} PC {:x} read value {:x}",
             self.cycle,
-            self.regs.visible[15],
-            bus.read(self.regs.visible[15])
+            self.regs.pc(),
+            bus.read(self.regs.pc(), self)
         );
-        self.instr_pipeline[1] = bus.read(self.regs.visible[15]);
+        self.instr_pipeline[1] = bus.read(self.regs.pc(), self);
 
         match self.get_state() {
-            State::ARM => self.regs.visible[15] += 4,
-            State::Thumb => self.regs.visible[15] += 2,
+            State::ARM => *self.regs.pc_mut() += 4,
+            State::Thumb => *self.regs.pc_mut() += 2,
         }
 
         if self.instr_pipeline_size == 2 {
-            log::trace!(
-                "Cycle {} PC {:x} execute instruction {:x}",
-                self.cycle,
-                self.regs.visible[15],
-                instruction
-            );
             self.execute(bus, instruction);
         } else {
             self.instr_pipeline_size += 1;
@@ -190,15 +232,35 @@ impl Cpu {
     }
 
     pub fn in_privileged_mode(&self) -> bool {
-        match self.mode {
+        match self.get_mode() {
             Mode::User => false,
+            _ => true,
+        }
+    }
+
+    pub fn mode_has_spsr(&self) -> bool {
+        match self.get_mode() {
+            Mode::User | Mode::System => false,
             _ => true,
         }
     }
 
     pub fn inspect(&self) -> CpuDetails {
         CpuDetails {
-            pc: self.get_reg(15),
+            regs: self.regs.clone(),
+            mode: self.get_mode(),
+            executing_pc: if self.instr_pipeline_size == 2 {
+                Some(self.get_executing_instruction_pc())
+            } else {
+                None
+            },
+        }
+    }
+
+    pub fn prefetched_instruction(&self) -> u32 {
+        match self.get_state() {
+            State::ARM => self.instr_pipeline[0],
+            State::Thumb => 0, // TODO: implement this properly
         }
     }
 }

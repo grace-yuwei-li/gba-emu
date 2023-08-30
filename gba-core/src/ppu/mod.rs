@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    to_canvas_data,
+    to_canvas_binary_data, to_canvas_data,
     utils::{get_u32, set_u32, AddressableBits},
 };
 
@@ -10,6 +10,8 @@ pub struct Ppu {
     bg_obj_palette: Vec<u8>,
     pub(super) vram: Vec<u8>,
     oam: Vec<u8>,
+
+    vblank_timer: u8,
 }
 
 #[wasm_bindgen]
@@ -23,6 +25,10 @@ impl PpuDetails {
     pub fn screen(&self) -> js_sys::Uint8ClampedArray {
         to_canvas_data(&self.screen)
     }
+
+    pub fn vram(&self) -> js_sys::Uint8ClampedArray {
+        to_canvas_binary_data(&self.screen)
+    }
 }
 
 impl Default for Ppu {
@@ -32,6 +38,8 @@ impl Default for Ppu {
             bg_obj_palette: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
+
+            vblank_timer: 100,
         }
     }
 }
@@ -83,6 +91,19 @@ impl Ppu {
         PpuDetails {
             bg_mode: self.bg_mode(),
             screen: self.get_screen(),
+        }
+    }
+
+    pub fn tick(&mut self) {
+        // Toggle V-Blank flag every 100 cycles
+        // Not accurate at all, but lets us proceed in arm.gba
+        if self.vblank_timer == 0 {
+            self.vblank_timer = 100;
+            let dispstat = self.lcd_regs[4];
+            let vblank = dispstat.bit(0);
+            self.lcd_regs[4] = dispstat.bits(1, 15) | (!vblank & 1);
+        } else {
+            self.vblank_timer -= 1;
         }
     }
 }

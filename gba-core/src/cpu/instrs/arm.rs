@@ -5,6 +5,8 @@ mod data_processing;
 mod halfword_transfer;
 mod psr_transfer;
 mod single_data_transfer;
+mod swi;
+mod multiply;
 
 use crate::bus::Bus;
 use crate::cpu::{Cpu, CPSR};
@@ -128,15 +130,25 @@ impl MetaInstr {
     fn get_arm_instruction(&self, instruction: u32) -> Box<dyn ArmInstruction> {
         match *self {
             Self::DataProcessing => match instruction.bits(21, 24) {
+                0b0000 => Box::new(data_processing::And),
+                0b0001 => Box::new(data_processing::Eor),
+                0b0010 => Box::new(data_processing::Sub),
+                0b0011 => Box::new(data_processing::Rsb),
+                0b0101 => Box::new(data_processing::Adc),
                 0b0100 => Box::new(data_processing::Add),
+                0b0110 => Box::new(data_processing::Sbc),
                 0b1000 => Box::new(data_processing::Tst),
                 0b1001 => Box::new(data_processing::Teq),
                 0b1010 => Box::new(data_processing::Cmp),
                 0b1100 => Box::new(data_processing::Orr),
                 0b1101 => Box::new(data_processing::Mov),
-                0b0000 ..= 0b1111 => Box::new(TodoInstruction::new_message(format!("DataProcessing opcode: {:b}", instruction.bits(21, 24)))),
+                0b1111 => Box::new(data_processing::Mvn),
+                0b0000..=0b1111 => Box::new(TodoInstruction::new_message(format!(
+                    "DataProcessing opcode: {:b}",
+                    instruction.bits(21, 24)
+                ))),
                 _ => unreachable!(),
-            }
+            },
             Self::BlockDataTrans => Self::decode_block_data_transfer(instruction),
             Self::Branch => Box::new(branch::Branch),
             Self::BranchAndExchange => Box::new(branch_and_exchange::BranchAndExchange),
@@ -144,32 +156,27 @@ impl MetaInstr {
             Self::HalfwordTransReg => Self::decode_halfword_transfer(instruction),
             Self::PsrTransfer => Self::decode_psr_transfer(instruction),
             Self::SingleDataTrans => Self::decode_single_data_transfer(instruction),
+            Self::SoftwareInterrupt => Box::new(swi::Swi),
+            Self::Multiply => Box::new(multiply::Multiply),
             _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
         }
     }
 }
 
-struct TodoInstruction(Option<String>);
+struct TodoInstruction(String);
 impl TodoInstruction {
-    pub fn new() -> Self {
-        Self(None)
-    }
-
     pub fn new_message(message: String) -> Self {
-        Self(Some(message))
+        Self(message)
     }
 }
 
 impl ArmInstruction for TodoInstruction {
-    fn execute(&self, _: &mut Cpu, _: &mut Bus, _: u32) {
-        todo!()
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, _: u32) {
+        todo!("TODO: {} at PC: {:x}", self.0, cpu.get_executing_instruction_pc())
     }
 
     fn disassembly(&self, _: u32) -> String {
-        match &self.0 {
-            None => "TODO".to_string(),
-            Some(msg) => format!("TODO: {}", msg),
-        }
+        format!("TODO: {}", self.0)
     }
 }
 
@@ -185,9 +192,7 @@ impl ArmInstruction for UnimplementedInstruction {
 }
 
 impl Cpu {
-    pub fn check_cond(&mut self, instruction: u32) -> bool {
-        let cond_bits = instruction >> 28;
-
+    pub fn check_cond(&mut self, cond_bits: u32) -> bool {
         match cond_bits {
             0b0000 => self.get_cpsr_bits(CPSR::Z) != 0,
             0b0001 => self.get_cpsr_bits(CPSR::Z) == 0,
@@ -215,8 +220,32 @@ impl Cpu {
         }
     }
 
+    pub fn disassemble_cond(instruction: u32) -> &'static str {
+        let cond_bits = instruction >> 28;
+
+        match cond_bits {
+            0b0000 => "EQ",
+            0b0001 => "NE",
+            0b0010 => "CS/HS",
+            0b0011 => "CC/LO",
+            0b0100 => "MI",
+            0b0101 => "PL",
+            0b0110 => "VS",
+            0b0111 => "VC",
+            0b1000 => "HI",
+            0b1001 => "LS",
+            0b1010 => "GE",
+            0b1011 => "LT",
+            0b1100 => "GT",
+            0b1101 => "LE",
+            0b1110 => "",
+            0b1111 => unimplemented!(),
+            _ => unreachable!(),
+        }
+    }
+
     pub(super) fn decode_arm(&mut self, instruction: u32) -> Box<dyn ArmInstruction> {
-        MetaInstr::decode_arm(instruction) 
+        MetaInstr::decode_arm(instruction)
     }
 }
 

@@ -2,6 +2,7 @@ pub trait AddressableBits<T> {
     fn bit(&self, index: usize) -> T;
     fn bits(&self, start: usize, end_inclusive: usize) -> T;
     fn set_bit(self, index: usize, value: bool) -> T;
+    fn mut_bit(&mut self, index: usize, value: bool);
 }
 
 impl AddressableBits<u32> for u32 {
@@ -20,6 +21,12 @@ impl AddressableBits<u32> for u32 {
     fn set_bit(self, index: usize, value: bool) -> u32 {
         let mask = !(1 << index);
         (self & mask) | (if value { 1 } else { 0 }) << index
+    }
+
+    #[inline]
+    fn mut_bit(&mut self, index: usize, value: bool) {
+        let mask = !(1 << index);
+        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
     }
 }
 
@@ -40,6 +47,12 @@ impl AddressableBits<u16> for u16 {
         let mask = !(1 << index);
         (self & mask) | (if value { 1 } else { 0 }) << index
     }
+
+    #[inline]
+    fn mut_bit(&mut self, index: usize, value: bool) {
+        let mask = !(1 << index);
+        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
+    }
 }
 
 impl AddressableBits<u8> for u8 {
@@ -58,6 +71,12 @@ impl AddressableBits<u8> for u8 {
     fn set_bit(self, index: usize, value: bool) -> u8 {
         let mask = !(1 << index);
         (self & mask) | (if value { 1 } else { 0 }) << index
+    }
+
+    #[inline]
+    fn mut_bit(&mut self, index: usize, value: bool) {
+        let mask = !(1 << index);
+        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
     }
 }
 

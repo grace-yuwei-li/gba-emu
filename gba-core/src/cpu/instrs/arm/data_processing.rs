@@ -42,7 +42,7 @@ enum ShifterOperand {
 impl Debug for ShifterOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            Self::Imm { imm, c } => write!(f, "#{:x}", imm),
+            Self::Imm { imm, .. } => write!(f, "#{:x}", imm),
             Self::LSL { rm, shift_source } => match shift_source {
                 ShiftSource::Immediate(0) => write!(f, "r{}", rm),
                 ShiftSource::Immediate(imm) => write!(f, "r{}, LSL #{:x}", rm, imm),
@@ -228,45 +228,227 @@ impl DataProcessingFields {
     }
 }
 
+pub struct And;
+pub struct Eor;
+pub struct Sub;
+pub struct Rsb;
 pub struct Add;
+pub struct Sbc;
+pub struct Adc;
 pub struct Tst;
 pub struct Teq;
 pub struct Cmp;
 pub struct Orr;
 pub struct Mov;
+pub struct Mvn;
+
+struct FlagUpdates {
+    n: Option<bool>,
+    z: Option<bool>,
+    c: Option<bool>,
+    v: Option<bool>,
+}
 
 #[inline]
-fn execute_op<F>(cpu: &mut Cpu, bus: &mut Bus, instruction: u32, op_closure: F)
+fn execute_op<F>(cpu: &mut Cpu, _: &mut Bus, instruction: u32, op_closure: F)
 where
-    F: Fn(u32, u32) -> u32,
+    // op1, op2, shifter carry
+    F: Fn(u32, u32, bool) -> (u32, FlagUpdates),
 {
     let fields = DataProcessingFields::parse(instruction);
     let (op2, c) = fields.shifter.op2(cpu);
+    let op1 = cpu.get_reg(fields.rn as usize);
 
-    if fields.set {
-        todo!();
+    let (output, flags) = op_closure(op1, op2, c);
+
+    if fields.set && fields.rd == 15 {
+        if cpu.mode_has_spsr() {
+            cpu.regs.cpsr = cpu.regs.spsr(&cpu.get_mode());
+        } else {
+            todo!("unpredictable")
+        }
+    } else if fields.set {
+        if let Some(b) = flags.n {
+            cpu.set_flag(CPSR::N, b);
+        }
+        if let Some(b) = flags.z {
+            cpu.set_flag(CPSR::Z, b);
+        }
+        if let Some(b) = flags.c {
+            cpu.set_flag(CPSR::C, b);
+        }
+        if let Some(b) = flags.v {
+            cpu.set_flag(CPSR::V, b);
+        }
     }
-
-    let output = op_closure(cpu.get_reg(fields.rn as usize), op2);
     cpu.set_reg(fields.rd as usize, output);
 }
 
-impl ArmInstruction for Add {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
-        execute_op(cpu, bus, instruction, |op1, op2| op1 + op2);
+impl ArmInstruction for And {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let result = op1 & op2;
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
     }
 
-    fn disassembly(&self, instruction: u32) -> String
-    {
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("AND r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Eor {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let result = op1 ^ op2;
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("EOR r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Sub {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, _| {
+            let (result, borrow) = op1.overflowing_sub(op2);
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(!borrow),
+                    v: Some(op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31)),
+                },
+            )
+        })
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("SUB r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Rsb {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, _| {
+            let (result, borrow) = op2.overflowing_sub(op1);
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(!borrow),
+                    v: Some(op2.bit(31) != op1.bit(31) && op2.bit(31) != result.bit(31)),
+                },
+            )
+        })
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("RSB r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Add {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, _| {
+            let (result, c) = op1.overflowing_add(op2);
+            let n = result.bit(31) == 1;
+            let z = result == 0;
+            let v = op1.bit(31) == op2.bit(31) && op1.bit(31) != result.bit(31);
+            (
+                result,
+                FlagUpdates {
+                    n: Some(n),
+                    z: Some(z),
+                    c: Some(c),
+                    v: Some(v),
+                },
+            )
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("ADD r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
     }
 }
 
+impl ArmInstruction for Sbc {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let (mut result, mut borrow) = op1.overflowing_sub(op2);
+            let mut overflow = op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31);
+            if !shift_carry {
+                let (final_result, b2) = result.overflowing_sub(1);
+                let overflow2 = result.bit(31) == 1 && final_result.bit(31) == 0;
+                result = final_result;
+                borrow |= b2;
+                overflow |= overflow2;
+            }
+
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(!borrow),
+                v: Some(overflow),
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("SBC r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Adc {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let (mut result, mut carry) = op1.overflowing_add(op2);
+            let mut overflow = op1.bit(31) == op2.bit(31) && op1.bit(31) != result.bit(31);
+            if shift_carry {
+                let (final_result, c2) = result.overflowing_add(1);
+                let overflow2 = result.bit(31) == 0 && final_result.bit(31) == 1;
+                result = final_result;
+                carry |= c2;
+                overflow |= overflow2;
+            }
+
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(carry),
+                v: Some(overflow),
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("ADC r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
 impl ArmInstruction for Tst {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
 
@@ -277,16 +459,14 @@ impl ArmInstruction for Tst {
         cpu.set_flag(CPSR::C, c)
     }
 
-    fn disassembly(&self, instruction: u32) -> String
-    {
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("TST r{}, {:?}", fields.rn, fields.shifter)
     }
 }
 
 impl ArmInstruction for Teq {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
 
@@ -300,18 +480,16 @@ impl ArmInstruction for Teq {
         cpu.set_flag(CPSR::C, c)
     }
 
-    fn disassembly(&self, instruction: u32) -> String
-    {
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("TEQ r{}, {:?}", fields.rn, fields.shifter)
     }
 }
 
 impl ArmInstruction for Cmp {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(instruction);
-        let (op2, c) = fields.shifter.op2(cpu);
+        let (op2, _) = fields.shifter.op2(cpu);
 
         let op1 = cpu.get_reg(fields.rn as usize);
         let (output, borrow) = op1.overflowing_sub(op2);
@@ -324,43 +502,82 @@ impl ArmInstruction for Cmp {
         cpu.set_flag(CPSR::V, overflow);
     }
 
-    fn disassembly(&self, instruction: u32) -> String
-    {
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("CMP r{}, {:?}", fields.rn, fields.shifter)
     }
 }
 
 impl ArmInstruction for Orr {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
-        execute_op(cpu, bus, instruction, |op1, op2| op1 | op2)
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let result = op1 | op2;
+            let n = result.bit(31) == 1;
+            let z = result == 0;
+            (
+                result,
+                FlagUpdates {
+                    n: Some(n),
+                    z: Some(z),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
+        })
     }
-    fn disassembly(&self, instruction: u32) -> String
-    {
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("ORR r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
     }
 }
 
 impl ArmInstruction for Mov {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32)
-    {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
-
-        if fields.set {
-            todo!()
-        }
 
         cpu.set_reg(fields.rd as usize, op2);
         if fields.rd == 15 {
             cpu.flush_pipeline();
         }
+
+        if fields.set && fields.rd == 15 {
+            if cpu.mode_has_spsr() {
+                cpu.regs.cpsr = cpu.regs.spsr(&cpu.get_mode());
+            } else {
+                todo!("unpredictable")
+            }
+        } else if fields.set {
+            cpu.set_flag(CPSR::N, op2.bit(31) == 1);
+            cpu.set_flag(CPSR::Z, op2 == 0);
+            cpu.set_flag(CPSR::C, c);
+        }
     }
-    fn disassembly(&self, instruction: u32) -> String
-    {
+
+    fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("MOV r{}, {:?}", fields.rd, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Mvn {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |_, op2, shift_carry| {
+            let result = !op2;
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
+        })
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("MVN r{}, {:?}", fields.rd, fields.shifter)
     }
 }

@@ -1,95 +1,220 @@
-use crate::logging::Targets;
+use crate::cpu::CPSR;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
-use tracing::trace;
 
 use super::ArmInstruction;
 use super::MetaInstr;
 
 struct STR;
 struct LDR;
+struct LDRB;
+
+#[derive(PartialEq, Eq)]
+enum AddressingModeSource {
+    Immediate {
+        rn: u32,
+        u: bool,
+        offset: u32,
+    },
+    // Scaled or regular - determined by shift and shift_imm
+    Register {
+        rn: u32,
+        u: bool,
+        rm: u32,
+        shift: u32,
+        shift_imm: u32,
+    },
+}
+
+impl AddressingModeSource {
+    fn rn(&self) -> u32 {
+        match *self {
+            Self::Immediate { rn, u: _, offset: _ } => rn,
+            Self::Register { rn, u: _, rm: _, shift: _, shift_imm: _ } => rn
+        }
+    }
+    fn u(&self) -> bool {
+        match *self {
+            Self::Immediate { rn: _, u, offset: _ } => u,
+            Self::Register { rn: _, u, rm: _, shift: _, shift_imm: _ } => u
+        }
+    }
+    pub fn offset(&self, cpu: &Cpu) -> u32 {
+        match *self {
+            Self::Immediate { rn: _, u: _, offset } => offset,
+            Self::Register { rn: _, u: _, rm, shift, shift_imm } => {
+                let rm = cpu.get_reg(rm as usize);
+                match shift {
+                    0b00 => rm << shift_imm,
+                    0b01 if shift_imm == 0 => 0,
+                    0b01 => rm >> shift_imm,
+                    0b10 if shift_imm == 0 => if rm.bit(31) == 0 { 0 } else { 0xffffffff },
+                    0b10 => ((rm as i32) >> shift_imm) as u32,
+                    0b11 if shift_imm == 0 => cpu.get_cpsr_bits(CPSR::C) << 31 | rm >> 1,
+                    0b11 => rm.rotate_right(shift_imm),
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum AddressingModeIndexing {
+    Offset,
+    PreIndexed,
+    PostIndexed,
+}
+
+struct AddressingMode {
+    source: AddressingModeSource,
+    indexing: AddressingModeIndexing,
+}
+
+impl AddressingMode {
+    pub fn decode(instruction: u32) -> Self {
+        let i = instruction.bit(25) == 1;
+        let p = instruction.bit(24) == 1;
+        let u = instruction.bit(23) == 1;
+        let w = instruction.bit(21) == 1;
+        let rn = instruction.bits(16, 19);
+
+        let source = match i {
+            false => AddressingModeSource::Immediate {
+                u,
+                rn,
+                offset: instruction.bits(0, 11)
+            },
+            true => {
+                AddressingModeSource::Register { 
+                    rn, 
+                    u, 
+                    rm: instruction.bits(0, 3),
+                    shift: instruction.bits(5, 6),
+                    shift_imm: instruction.bits(7, 11),
+                }
+            },
+        };
+
+        let indexing = match (p, w) {
+            (true, false) => AddressingModeIndexing::Offset,
+            (true, true) => AddressingModeIndexing::PreIndexed,
+            (false, false) => AddressingModeIndexing::PostIndexed,
+            // Not sure what happens if p false and w true, none of
+            // the 9 addressing modes seem to correspond to this case.
+            (false, true) => AddressingModeIndexing::PostIndexed,
+        };
+
+        Self {
+            source,
+            indexing,
+        }
+    }
+
+    pub fn address(&self, cpu: &Cpu) -> u32 {
+        match self.indexing {
+            AddressingModeIndexing::Offset | AddressingModeIndexing::PreIndexed => if self.source.u() {
+                cpu.get_reg(self.source.rn() as usize).wrapping_add(self.source.offset(cpu))
+            } else {
+                cpu.get_reg(self.source.rn() as usize).wrapping_sub(self.source.offset(cpu))
+            },
+            AddressingModeIndexing::PostIndexed => cpu.get_reg(self.source.rn() as usize),
+        }
+    }
+
+    pub fn write_back(&self) -> bool {
+        match self.indexing {
+            AddressingModeIndexing::Offset => false,
+            AddressingModeIndexing::PreIndexed | AddressingModeIndexing::PostIndexed => true,
+        }
+    }
+}
+
+impl std::fmt::Display for AddressingMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sign = if self.source.u() {
+            "+"
+        } else {
+            "-"
+        };
+
+        let filler = match self.source {
+            AddressingModeSource::Immediate { rn: _, u: _, offset } => {
+                format!("#{}{:x}", sign, offset)
+            },
+            AddressingModeSource::Register { rn: _, u: _, rm, shift, shift_imm } if shift == 0 && shift_imm == 0 => {
+                format!("{}r{}", sign, rm)
+            } 
+            AddressingModeSource::Register { rn: _, u: _, rm, shift, shift_imm } if shift == 0b11 && shift_imm == 0 => {
+                format!("{}r{}, RRX", sign, rm)
+            },
+            AddressingModeSource::Register { rn: _, u: _, rm, shift, shift_imm }  => {
+                let shift = match shift {
+                    0b00 => "LSL",
+                    0b01 => "LSR",
+                    0b10 => "ASR",
+                    0b11 => "ROR",
+                    _ => unreachable!(),
+                };
+                format!("{}r{}, {}, #{}", sign, rm, shift, shift_imm)
+            }
+        };
+
+        match self.indexing {
+            AddressingModeIndexing::Offset => write!(f, "[{}, {}]", self.source.rn(), filler),
+            AddressingModeIndexing::PreIndexed => write!(f, "[{}, {}]!", self.source.rn(), filler),
+            AddressingModeIndexing::PostIndexed => write!(f, "[{}], {}", self.source.rn(), filler),
+        }
+    }
+}
 
 impl ArmInstruction for STR {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        let i = instruction.bit(25);
-        let p = instruction.bit(24);
-        let u = instruction.bit(23);
         let b = instruction.bit(22);
-        let w = instruction.bit(21);
-
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
+        let addressing_mode = AddressingMode::decode(instruction);
 
-        if b == 1 {
-            todo!();
+        let address = addressing_mode.address(cpu);
+
+        if b == 0 {
+            bus.write(address, cpu.get_reg(rd as usize));
+        } else {
+            bus.write_byte(address, cpu.get_reg(rd as usize) as u8);
         }
-        println!(
-            "I {} P {} U {} B {} W {}",
-            i == 1,
-            p == 1,
-            u == 1,
-            b == 1,
-            w == 1
-        );
-
-        match (i == 1, p == 1, u == 1, b == 1, w == 1) {
-            (false, false, u, false, false) => {
-                let address = cpu.get_reg(rn as usize);
-                bus.write(address, cpu.get_reg(rd as usize));
-            }
-            (false, true, u, false, false) => {
-                let address = cpu.get_reg(rn as usize) + instruction.bits(0, 11);
-                bus.write(address, cpu.get_reg(rd as usize));
-            }
-            _ => todo!(),
+        if addressing_mode.write_back() {
+            cpu.set_reg(rn as usize, address);
         }
     }
 
     fn disassembly(&self, instruction: u32) -> String {
         let b = instruction.bit(22);
-        format!("STR{}", if b == 1 { "B" } else { "" })
+        let rd = instruction.bits(12, 15);
+        let addressing_mode = AddressingMode::decode(instruction);
+        format!("STR{} r{} {}", if b == 1 { "B" } else { "" }, rd, addressing_mode)
     }
 }
 
 impl ArmInstruction for LDR {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        let i = instruction.bit(25);
-        let p = instruction.bit(24);
-        let u = instruction.bit(23);
         let b = instruction.bit(22);
-        let w = instruction.bit(21);
-
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
-        let offset = instruction.bits(0, 12);
+        let addressing_mode = AddressingMode::decode(instruction);
 
-        println!(
-            "I {} P {} U {} B {} W {}",
-            i == 1,
-            p == 1,
-            u == 1,
-            b == 1,
-            w == 1
-        );
+        let address = addressing_mode.address(cpu);
 
-        if b == 1 {
-            todo!();
+        let val = if b == 0 {
+            bus.read(address, cpu)
+        } else {
+            bus.read_byte(address, cpu) as u32
+        };
+
+        cpu.set_reg(rd as usize, val);
+        if addressing_mode.write_back() {
+            cpu.set_reg(rn as usize, address);
         }
-
-        let address;
-        match (i == 1, p == 1, u == 1, b == 1, w == 1) {
-            (false, true, u, false, false) => {
-                address = if u {
-                    cpu.get_reg(rn as usize) + offset
-                } else {
-                    cpu.get_reg(rn as usize) - offset
-                };
-            }
-            _ => todo!(),
-        }
-
-        cpu.set_reg(rd as usize, bus.read(address));
 
         if rd == 15 {
             cpu.flush_pipeline();
@@ -98,7 +223,9 @@ impl ArmInstruction for LDR {
 
     fn disassembly(&self, instruction: u32) -> String {
         let b = instruction.bit(22);
-        format!("LDR{}", if b == 1 { "B" } else { "" })
+        let rd = instruction.bits(12, 15);
+        let addressing_mode = AddressingMode::decode(instruction);
+        format!("LDR{} r{} {}", if b == 1 { "B" } else { "" }, rd, addressing_mode)
     }
 }
 

@@ -3,17 +3,17 @@
 	import { onMount } from "svelte";
 
     let canvas: HTMLCanvasElement;
-    const screenScale = 3;
+    const screenScale = 2;
 
     const tick = () => {
         const details = $gba?.inspect_ppu();
 
-        const canvas_data = details?.screen();
+        const canvas_data = details?.vram();
         if (canvas_data) {
             const imageData = new ImageData(canvas_data, 240);
             createImageBitmap(imageData, {
-                resizeWidth: 240 * 3,
-                resizeHeight: 160 * 3,
+                resizeWidth: 240 * 2,
+                resizeHeight: 160 * 2,
                 resizeQuality: 'pixelated',
             }).then((bitmap) => {
                 const ctx = canvas.getContext('2d');

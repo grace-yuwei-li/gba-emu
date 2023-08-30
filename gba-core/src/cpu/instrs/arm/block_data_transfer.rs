@@ -1,5 +1,5 @@
-use crate::cpu::State;
 use crate::cpu::instrs::arm::TodoInstruction;
+use crate::cpu::State;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
@@ -27,7 +27,7 @@ impl ArmInstruction for LDMFD {
         for i in 0..=14 {
             if instruction.bit(i) == 1 {
                 reg_count += 1;
-                let value = bus.read(address);
+                let value = bus.read(address, cpu);
                 cpu.set_reg(i, value);
                 address += 4;
             }
@@ -37,7 +37,7 @@ impl ArmInstruction for LDMFD {
             reg_count += 1;
 
             // Write to PC
-            let value = bus.read(address);
+            let value = bus.read(address, cpu);
             cpu.set_reg(15, value & 0xffff_fffe);
 
             let state = if value & 1 == 0 {
@@ -61,7 +61,7 @@ impl ArmInstruction for LDMFD {
 
     fn disassembly(&self, instruction: u32) -> String {
         let base_register = instruction.bits(16, 19);
-        format!("LDMFD r{}, {:b}", base_register, instruction.bits(0, 15))
+        format!("LDMFD r{}, {{{}}}", base_register, reg_list(instruction))
     }
 }
 
@@ -97,7 +97,7 @@ impl ArmInstruction for STMFD {
 
     fn disassembly(&self, instruction: u32) -> String {
         let base_register = instruction.bits(16, 19);
-        format!("STMFD r{}, {:b}", base_register, instruction.bits(0, 15))
+        format!("STMFD r{}, {{{}}}", base_register, reg_list(instruction))
     }
 }
 
@@ -111,7 +111,7 @@ impl MetaInstr {
         );
 
         if instruction.bit(22) == 1 {
-            todo!("user mode");
+            return Box::new(TodoInstruction::new_message(format!("user mode")));
         }
 
         let arg_pu = instruction.bits(23, 24);
@@ -125,8 +125,44 @@ impl MetaInstr {
         match arg_pu << 1 | arg_l {
             0b011 => Box::new(LDMFD),
             0b100 => Box::new(STMFD),
-            0b000..=0b111 => Box::new(TodoInstruction::new_message(format!("{:03b}", arg_pu << 1 | arg_l))),
+            0b000..=0b111 => Box::new(TodoInstruction::new_message(format!(
+                "{:03b}",
+                arg_pu << 1 | arg_l
+            ))),
             _ => unreachable!(),
         }
     }
+}
+
+fn reg_list(instruction: u32) -> String {
+    let mut regs: Vec<u8> = vec![];
+    for i in 0u8 ..= 15 {
+        if instruction.bit(i.into()) == 1 {
+            regs.push(i);
+        }
+    }
+
+    let mut to_join: Vec<String> = vec![];
+    let mut start: u8 = regs[0];
+    let mut prev: u8 = regs[0];
+    for reg in regs[1..].into_iter().copied() {
+        if reg != prev + 1 {
+            if start == prev {
+                to_join.push(format!("r{}", start));
+            } else {
+                to_join.push(format!("r{}-r{}", start, prev));
+            }
+            start = reg;
+            prev = reg;
+        } else {
+            prev += 1;
+        }
+    }
+    if start == prev {
+        to_join.push(format!("r{}", start));
+    } else {
+        to_join.push(format!("r{}-r{}", start, prev));
+    }
+
+    to_join.join(",")
 }

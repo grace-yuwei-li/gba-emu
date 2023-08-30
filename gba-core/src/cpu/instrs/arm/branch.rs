@@ -1,13 +1,11 @@
-use crate::logging::Targets;
 use crate::Bus;
 use crate::Cpu;
-use tracing::trace;
 
 use super::ArmInstruction;
 
 pub struct Branch;
 impl ArmInstruction for Branch {
-    fn execute(&self, cpu: &mut Cpu, _bus: &mut Bus, instruction: u32) {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let link = (instruction >> 24) & 1 != 0;
         let offset = instruction & 0xffffff;
         let offset = ((offset << 8) as i32) >> 6;
@@ -26,6 +24,8 @@ impl ArmInstruction for Branch {
         let link = (instruction >> 24) & 1 != 0;
         let offset = instruction & 0xffffff;
         let offset = ((offset << 8) as i32) >> 6;
-        format!("B{} PC+{:x}", if link { "L" } else { "" }, offset)
+
+        let cond = Cpu::disassemble_cond(instruction);
+        format!("B{}{} PC+{:x}", if link { "L" } else { "" }, cond, offset)
     }
 }

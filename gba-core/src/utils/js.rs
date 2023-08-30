@@ -1,5 +1,3 @@
-use std::iter::FlatMap;
-
 use js_sys::Uint8ClampedArray;
 use wasm_bindgen::prelude::wasm_bindgen;
 

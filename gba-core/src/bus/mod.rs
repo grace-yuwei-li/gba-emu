@@ -1,11 +1,13 @@
 mod io_map;
 
 use io_map::IoMap;
+use num_traits::{AsPrimitive, FromBytes, FromPrimitive, ToBytes, ToPrimitive};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
+    cpu::Cpu,
     ppu::Ppu,
-    utils::{get_u32, set_u32},
+    utils::{get, get_u32, set, set_u32},
 };
 
 #[wasm_bindgen]
@@ -22,6 +24,7 @@ impl MemoryDetails {
 }
 
 pub struct Bus {
+    bios: [u8; 0x4000],
     sys_rom: [u8; 0x4000],
     ew_ram: [u8; 0x40000],
     iw_ram: [u8; 0x8000],
@@ -36,6 +39,7 @@ pub struct Bus {
 impl Default for Bus {
     fn default() -> Self {
         Self {
+            bios: include_bytes!("../../bios.bin").clone(),
             sys_rom: [0; 0x4000],
             ew_ram: [0; 0x40000],
             iw_ram: [0; 0x8000],
@@ -60,48 +64,82 @@ impl Bus {
         log::trace!("byte at 0x8000000 is {:#010b}", self.game_pak_rom[0])
     }
 
-    pub fn read(&self, index: u32) -> u32 {
-        let index: usize = index.try_into().unwrap();
+    fn read_internal<T, const N: usize>(&self, address: u32, cpu: &Cpu) -> T
+    where
+        T: FromBytes<Bytes = [u8; N]> + 'static + Copy,
+        u32: AsPrimitive<T>,
+    {
+        let index: usize = address.try_into().unwrap();
         match index {
+            0x0 ..= 0x3fff => get(&self.bios, index),
             0x3000000..=0x3007fff => {
                 let index = index - 0x3000000;
-                get_u32(&self.iw_ram, index)
+                get(&self.iw_ram, index)
             }
-            0x4000000..=0x400005f => self.ppu.read_lcd_io_regs(index),
-            0x4000060..=0x40003fe => self.io_map.read(index),
-            0x5000000..=0x7ffffff => self.ppu.read_simple(index),
+            0x4000000..=0x4ffffff => match index & 0x3ff {
+                0..=0x5f => self.ppu.read_lcd_io_regs(index & 0x40003ff).as_(),
+                0x60..=0x3fe => self.io_map.read(index & 0x40003ff).as_(),
+                0x3ff => todo!(),
+                _ => unreachable!(),
+            },
+            0x5000000..=0x7ffffff => self.ppu.read_simple(index).as_(),
             0x8000000..=0x9ffffff => {
                 let index = index - 0x8000000;
-                get_u32(&self.game_pak_rom, index)
+                get_u32(&self.game_pak_rom, index).as_()
             }
-            _ => 0 //todo!("index {:#x} not implemented", index),
+            0x1000_0000..=0xffff_ffff => cpu.prefetched_instruction().as_(),
+            _ => 0.as_(), //todo!("index {:#x} not implemented", index),
         }
     }
 
-    pub fn read_half(&self, index: u32) -> u16 {
-        self.read(index) as u16
+    pub fn read(&self, index: u32, cpu: &Cpu) -> u32 {
+        self.read_internal(index, cpu)
     }
 
-    pub fn write(&mut self, index: u32, value: u32) {
+    pub fn read_half(&self, index: u32, cpu: &Cpu) -> u16 {
+        self.read_internal(index, cpu)
+    }
+
+    pub fn read_byte(&self, index: u32, cpu: &Cpu) -> u8 {
+        self.read_internal(index, cpu)
+    }
+
+    fn write_internal<T, const N: usize>(&mut self, index: u32, value: T)
+    where
+        T: ToBytes<Bytes = [u8; N]>,
+        T: Into<u32>,
+    {
         let index: usize = index.try_into().unwrap();
         match index {
             0x3000000..=0x3007fff => {
                 let index = index - 0x3000000;
-                set_u32(&mut self.iw_ram, index, value);
+                set::<T, N>(&mut self.iw_ram, index, value);
             }
-            0x4000000..=0x400005f => self.ppu.write_lcd_io_regs(index, value),
-            0x4000060..=0x40003fe => self.io_map.write(index, value),
-            0x5000000..=0x7ffffff => self.ppu.write_simple(index, value),
+            0x4000000..=0x4ffffff => match index & 0x3ff {
+                0..=0x5f => self.ppu.write_lcd_io_regs(index & 0x40003ff, value.into()),
+                0x60..=0x3fe => self.io_map.write(index & 0x40003ff, value.into()),
+                0x3ff => todo!(),
+                _ => unreachable!(),
+            },
+            0x5000000..=0x7ffffff => self.ppu.write_simple(index, value.into()),
             0x8000000..=0x9ffffff => {
                 let index = index - 0x8000000;
-                set_u32(&mut self.game_pak_rom, index, value);
+                set::<T, N>(&mut self.game_pak_rom, index, value);
             }
+            0x1000_0000..=0xffff_ffff => {}
             _ => todo!("index {:#x} not implemented", index),
         }
     }
 
+    pub fn write(&mut self, index: u32, value: u32) {
+        self.write_internal(index, value);
+    }
+
     pub fn write_half(&mut self, index: u32, value: u16) {
-        let value = (self.read(index) & 0xffff0000) | value as u32;
-        self.write(index, value)
+        self.write_internal(index, value);
+    }
+
+    pub fn write_byte(&mut self, index: u32, value: u8) {
+        self.write_internal(index, value);
     }
 }

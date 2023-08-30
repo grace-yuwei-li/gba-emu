@@ -38,11 +38,19 @@ struct MRS;
 struct MSR;
 
 impl ArmInstruction for MRS {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        todo!()
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        let r = instruction.bit(22);
+        let rd = instruction.bits(12, 15);
+        if r == 1 {
+            cpu.set_reg(rd as usize, cpu.regs.spsr(&cpu.get_mode()));
+        } else {
+            cpu.set_reg(rd as usize, cpu.regs.cpsr);
+        }
     }
     fn disassembly(&self, instruction: u32) -> String {
-        "MRS".to_string()
+        let r = instruction.bit(22);
+        let rd = instruction.bits(12, 15);
+        format!("MRS r{}, {}", rd, if r == 1 { "SPSR" } else { "CPSR" })
     }
 }
 
@@ -57,7 +65,7 @@ impl ArmInstruction for MSR {
         let field_mask = fields.field_mask;
 
         if fields.operand & unalloc_mask != 0 {
-            todo!("unpredictable")
+            //todo!("unpredictable")
         }
 
         let byte_mask: u32 = (if field_mask.bit(0) == 1 { 0xff } else { 0 })
@@ -71,20 +79,50 @@ impl ArmInstruction for MSR {
 
         if !fields.r {
             let mask;
-            println!("{:?}", cpu.mode);
+            println!("{:?}", cpu.get_mode());
             if cpu.in_privileged_mode() {
-                todo!();
+                if (fields.operand & state_mask) != 0 {
+                    todo!("unpredictable");
+                } else {
+                    mask = byte_mask & (user_mask | priv_mask);
+                }
             } else {
                 mask = byte_mask & user_mask;
             }
-            cpu.cpsr = (cpu.cpsr & !mask) | (fields.operand & mask);
+            cpu.regs.cpsr = (cpu.regs.cpsr & !mask) | (fields.operand & mask);
         } else {
-            todo!("true")
+            if cpu.mode_has_spsr() {
+                let mask = byte_mask & (user_mask | priv_mask | state_mask);
+                *cpu.regs.spsr_mut(&cpu.get_mode()) = (cpu.regs.spsr(&cpu.get_mode()) & !mask) | (fields.operand & mask);
+            } else {
+                todo!("unpredictable")
+            }
         }
     }
 
     fn disassembly(&self, instruction: u32) -> String {
-        "MSR".to_string()
+        let r = instruction.bit(22);
+        let field_mask = instruction.bits(16, 19);
+        let fields = ["c", "x", "s", "f"]
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, f)| if field_mask.bit(i) == 1 {
+                Some(f.to_string())
+            } else {
+                None
+            })
+            .collect::<Vec<String>>()
+            .join("");
+
+        let operand = if instruction.bit(25) == 1 {
+            let rotate_imm = instruction.bits(8, 11);
+            let imm = instruction.bits(0, 7);
+            format!("#{}", imm.rotate_right(2 * rotate_imm))
+        } else {
+            let rm = instruction.bits(0, 3);
+            format!("r{}", rm)
+        };
+        format!("MSR {}_{}, {}", if r == 1 { "SPSR" } else { "CPSR" }, fields, operand)
     }
 }
 

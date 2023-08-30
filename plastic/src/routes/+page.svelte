@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Debugger from "../components/Debugger.svelte";
+	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
 	import Toolbar from "../components/Toolbar.svelte";
@@ -14,6 +15,9 @@
     <div>
         <Debugger />
     </div>
+    <div>
+        <EmuInfo />
+    </div>
     <div id="screen-wrapper">
         <Screen />
     </div>
@@ -26,6 +30,7 @@
         height: 100vh;
         display: flex;
         flex-direction: column;
+        font-family: monospace;
     }
 
     #main {

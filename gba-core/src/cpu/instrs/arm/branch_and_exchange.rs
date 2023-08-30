@@ -7,7 +7,7 @@ use super::ArmInstruction;
 
 pub struct BranchAndExchange;
 impl ArmInstruction for BranchAndExchange {
-    fn execute(&self, cpu: &mut Cpu, _bus: &mut Bus, instruction: u32) {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let rn = instruction.bits(0, 3);
 
         if rn == 15 {

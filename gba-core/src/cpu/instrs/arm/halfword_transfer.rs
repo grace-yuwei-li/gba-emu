@@ -1,8 +1,6 @@
-use tracing::{error, trace};
+use crate::{bus::Bus, cpu::Cpu, utils::AddressableBits};
 
-use crate::{bus::Bus, cpu::Cpu, logging::Targets, utils::AddressableBits};
-
-use super::{ArmInstruction, MetaInstr};
+use super::{ArmInstruction, MetaInstr, UnimplementedInstruction};
 
 struct HalfwordTransFields {
     p: bool,
@@ -67,15 +65,16 @@ struct LDRSB;
 struct LDRSH;
 
 #[inline]
-fn execute_h<F>(cpu: &mut Cpu, bus: &mut Bus, instruction: u32, func: F) 
-where F: FnOnce(&mut Cpu, &mut Bus, usize, u32) -> ()
+fn execute_h<F>(cpu: &mut Cpu, bus: &mut Bus, instruction: u32, func: F)
+where
+    F: FnOnce(&mut Cpu, &mut Bus, usize, u32) -> (),
 {
     let fields = HalfwordTransFields::parse(instruction);
     let (address, final_address) = fields.address_mode_2(cpu);
 
     if address.bit(0) == 0 {
         func(cpu, bus, fields.rd as usize, address);
-        let val = bus.read_half(address);
+        let val = bus.read_half(address, cpu);
         cpu.set_reg(fields.rd as usize, val as u32);
     } else {
         todo!("UNPREDICTABLE, LDRH address is not halfword-aligned")
@@ -93,7 +92,7 @@ where F: FnOnce(&mut Cpu, &mut Bus, usize, u32) -> ()
 impl ArmInstruction for LDRH {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         execute_h(cpu, bus, instruction, |cpu, bus, rd, address| {
-            let val = bus.read_half(address);
+            let val = bus.read_half(address, cpu);
             cpu.set_reg(rd, val as u32);
         });
     }
@@ -143,7 +142,7 @@ impl MetaInstr {
             (1, 0b01) => Box::new(LDRH),
             (1, 0b10) => Box::new(LDRSB),
             (1, 0b11) => Box::new(LDRSH),
-            _ => unreachable!(),
+            _ => Box::new(UnimplementedInstruction),
         }
     }
 }

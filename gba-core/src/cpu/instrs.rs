@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::bus::Bus;
+use crate::{bus::Bus, utils::AddressableBits};
 
 use super::{Cpu, State};
 
@@ -11,7 +11,7 @@ impl Cpu {
     pub fn execute(&mut self, bus: &mut Bus, instruction: u32) {
         match self.get_state() {
             State::ARM => {
-                if !self.check_cond(instruction) {
+                if !self.check_cond(instruction.bits(28, 31)) {
                     log::trace!("Cond check failed for instruction {:#034b}", instruction);
                     return;
                 }

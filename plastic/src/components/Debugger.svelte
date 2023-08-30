@@ -4,6 +4,7 @@
 
     interface Line {
         address: number,
+        value: number | undefined,
         content: string,
     }
 
@@ -28,22 +29,6 @@
     let lines: Line[];
 	$: lines = new Array(visibleLineCount).fill(0).map((_, index) => getLine(firstLine + index));
 
-	const handleScrollScrollbar = (event: UIEvent) => {
-		const target = event.target as HTMLElement;
-
-		const scrollRatioTop = target.scrollTop / scrollbarHeight;
-        const scrollRatioBot = (target.scrollTop + target.clientHeight) / scrollbarHeight;
-
-        contentTop = scrollRatioTop * totalHeight;
-        /*
-        if (1 - scrollRatioTop > scrollRatioBot) {
-            contentTop = scrollRatioTop * totalHeight;
-        } else {
-            contentTop = scrollRatioBot * totalHeight - target.clientHeight;
-        }
-        */
-	};
-
 	const handleWheelContent = (event: WheelEvent) => {
         const scale = 0.2;
 
@@ -63,8 +48,9 @@
         }
 
         let disassembly;
+        let memValue;
         try {
-            const memValue = $gba?.read_address(index * 4);
+            memValue = $gba?.read_address(index * 4);
             if (memValue !== undefined) {
                 disassembly = disassemble_arm(memValue);
             } else {
@@ -76,6 +62,7 @@
         return {
             //address: `${(index * 4).toString(16).toUpperCase()}`,
             address: index * 4,
+            value: memValue,
             content: disassembly ?? 'undefined'
         }
     };
@@ -96,6 +83,19 @@
             }
         }
     }
+
+    let breakpoints: Record<number, boolean>;
+    $: breakpoints = Object.fromEntries(Array.from($gba?.breakpoints() ?? [])
+                        .map((address:number) => [address, true]));
+
+    const toggleBreakpoint = (address: number) => {
+        if (breakpoints[address]) {
+            $gba?.remove_breakpoint(address);
+        } else {
+            $gba?.add_breakpoint(address);
+        }
+        $gba = $gba;
+    };
 </script>
 
 <div id="debugger-wrapper">
@@ -118,7 +118,15 @@
             "
         >
             {#each lines as { address }, index (address)}
-                <div class="cell gutter-cell" style="--lineHeight:{lineHeight}; top: {lineHeight * index}px">
+                <div 
+                    class="cell gutter-cell {breakpoints[address] ? 'breakpoint' : ''}" 
+                    style="--lineHeight:{lineHeight}; top: {lineHeight * index}px"
+                    on:click={() => toggleBreakpoint(address)}
+                    on:keypress={() => toggleBreakpoint(address)}
+                    role="checkbox"
+                    aria-checked="{breakpoints[address]}"
+                    tabindex={0}
+                >
                     {`${address.toString(16).toUpperCase()}`}
                 </div>
             {/each}
@@ -127,16 +135,37 @@
             class="content"
             style="
                 left: {gutterWidth}px; 
-                right: 100px;
+                width: 400px;
                 top: {-contentTop % lineHeight}px;
             "
         >
             {#each lines as { address, content }, index (address)}
                 <div 
-                    class="cell content-cell {$gba?.inspect_cpu().pc === address ? 'selected' : 'not-selected'}" 
-                    style="--lineHeight:{lineHeight}; top: {lineHeight * index}px"
+                    class="
+                        cell content-cell 
+                        {$gba?.inspect_cpu().pc() === address ? 'pc' : ''}
+                        {$gba?.inspect_cpu().executing_pc === address ? 'executing' : ''}
+                    " 
+                    style="--lineHeight:{lineHeight}; top: {lineHeight * index}px; {content.includes('SWI') ? 'background-color: blue; color: white;' : ''}"
                 >
                     {content}
+                </div>
+            {/each}
+        </div>
+        <div
+            class="content"
+            style="
+                left: {gutterWidth + 400}px; 
+                right: 600px;
+                top: {-contentTop % lineHeight}px;
+            "
+        >
+            {#each lines as { address, value }, index (address)}
+                <div 
+                    class=" cell content-cell " 
+                    style="--lineHeight:{lineHeight}; top: {lineHeight * index}px;"
+                >
+                    { value?.toString(16) }
                 </div>
             {/each}
         </div>
@@ -167,9 +196,8 @@
 	#debugger {
         flex-grow: 1;
 		position: relative;
-		width: 500px;
+		width: 700px;
 		overflow: hidden;
-        font-family: monospace;
         background-color: white;
 	}
 
@@ -185,8 +213,18 @@
 		top: 0;
 	}
 
-    .selected {
+    .pc {
         background-color: gray;
+        color: white;
+    }
+
+    .executing {
+        background-color: red;
+        color: white;
+    }
+
+    .breakpoint {
+        background-color: red;
         color: white;
     }
 

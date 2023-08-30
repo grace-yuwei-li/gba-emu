@@ -60,17 +60,23 @@ impl GbaCore {
     }
 
     pub fn tick(&mut self) {
-        if self.debugger_enabled && self.breakpoints.contains(&self.cpu.get_executing_instruction_pc()) {
+        if self.debugger_enabled
+            && self
+                .breakpoints
+                .contains(&self.cpu.get_executing_instruction_pc())
+        {
             self.stopped = true;
         }
 
         if !self.stopped {
-            self.cpu.tick(&mut self.bus)
+            self.cpu.tick(&mut self.bus);
+            self.bus.ppu.tick();
         }
     }
 
     pub fn load_test_rom(&mut self) {
-        let bytes = include_bytes!("../tests/roms/panda.gba");
+        let bytes = include_bytes!("../tests/roms/arm.gba");
+        //let bytes = include_bytes!("../tests/roms/panda.gba");
         self.load_rom(bytes);
     }
 
@@ -79,7 +85,7 @@ impl GbaCore {
     }
 
     pub fn skip_bios(&mut self) {
-        self.cpu.skip_bios(&self.bus);
+        self.cpu.skip_bios();
     }
 
     pub fn reset(self) -> Self {
@@ -88,6 +94,14 @@ impl GbaCore {
             breakpoints: self.breakpoints,
             ..Self::default()
         }
+    }
+
+    pub fn enable_debugger(&mut self, enabled: bool) {
+        self.debugger_enabled = enabled;
+    }
+
+    pub fn set_stopped(&mut self, value: bool) {
+        self.stopped = value;
     }
 
     pub fn breakpoints(&self) -> Vec<u32> {
@@ -103,12 +117,6 @@ impl GbaCore {
     }
 
     pub fn read_address(&self, address: u32) -> u32 {
-        self.bus.read(address)
-    }
-}
-
-impl GbaCore {
-    pub fn regs(&mut self) -> Vec<u32> {
-        self.cpu.get_all_regs()
+        self.bus.read(address, &self.cpu)
     }
 }
