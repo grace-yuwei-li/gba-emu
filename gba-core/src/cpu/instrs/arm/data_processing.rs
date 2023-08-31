@@ -16,7 +16,7 @@ impl ShiftSource {
     fn get_amt(&self, cpu: &Cpu) -> u32 {
         match *self {
             Self::Immediate(imm) => imm,
-            Self::Register(reg) => cpu.get_reg(reg as usize).bits(0, 7),
+            Self::Register(reg) => cpu.get_reg(reg).bits(0, 7),
         }
     }
 }
@@ -138,72 +138,108 @@ impl ShifterOperand {
                 },
             ),
             Self::LSL { rm, shift_source } => {
+                let shift_amt = shift_source.get_amt(cpu);
+                if shift_amt == 0 {
+                    (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                } else if shift_amt < 32 {
+                    (
+                        cpu.get_reg(rm) << shift_amt,
+                        cpu.get_reg(rm).bit((32 - shift_amt).try_into().unwrap()) == 1,
+                    )
+                } else if shift_amt == 32 {
+                    (0, cpu.get_reg(rm).bit(0) == 1)
+                } else {
+                    (0, false)
+                }
+            }
+            Self::LSR { rm, shift_source } => {
                 match shift_source {
                     ShiftSource::Immediate(imm) => {
                         if imm == 0 {
-                            (cpu.get_reg(rm as usize), cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (0, cpu.get_reg(rm).bit(31) == 1)
                         } else {
                             (
-                                cpu.get_reg(rm as usize) << imm,
-                                cpu.get_reg(rm as usize).bit(32 - imm as usize) == 1,
-                            )
+                                cpu.get_reg(rm) >> imm,
+                                cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                                )
                         }
                     }
                     ShiftSource::Register(reg) => {
-                        let lower_bits = cpu.get_reg(reg as usize).bits(0, 7); 
-
-                        if lower_bits == 0 {
-                            (cpu.get_reg(rm as usize), cpu.get_cpsr_bits(CPSR::C) == 1)
-                        } else if lower_bits < 32 {
+                        let rs = cpu.get_reg(reg);
+                        if rs.bits(0, 7) == 0 {
+                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                        } else if rs.bits(0, 7) < 32 {
                             (
-                                cpu.get_reg(rm as usize) << lower_bits,
-                                cpu.get_reg(rm as usize).bit(32 - lower_bits as usize) == 1,
+                                cpu.get_reg(rm) >> rs.bits(0, 7),
+                                cpu.get_reg(rm).bit((rs.bits(0, 7) - 1).try_into().unwrap()) == 1,
                             )
-                        } else if lower_bits == 32 {
-                            (0, cpu.get_reg(rm as usize).bit(0) == 1)
+                        } else if rs.bits(0, 7) == 32 {
+                            (0, cpu.get_reg(rm).bit(31) == 1)
                         } else {
                             (0, false)
                         }
                     }
                 }
             }
-            Self::LSR { rm, shift_source } => {
-                let shift_amt = shift_source.get_amt(cpu);
-                if shift_amt == 0 {
-                    (0, cpu.get_reg(rm as usize).bit(31) == 1)
-                } else {
-                    (
-                        cpu.get_reg(rm as usize) >> shift_amt,
-                        cpu.get_reg(rm as usize).bit(shift_amt as usize - 1) == 1,
-                    )
-                }
-            }
             Self::ASR { rm, shift_source } => {
-                let shift_amt = shift_source.get_amt(cpu);
-                if shift_amt == 0 {
-                    (
-                        ((cpu.get_reg(rm as usize) as i32) >> 31) as u32,
-                        cpu.get_reg(rm as usize).bit(31) == 1,
-                    )
-                } else {
-                    (
-                        ((cpu.get_reg(rm as usize) as i32) >> shift_amt) as u32,
-                        cpu.get_reg(rm as usize).bit(shift_amt as usize - 1) == 1,
-                    )
+                match shift_source {
+                    ShiftSource::Immediate(imm) => {
+                        if imm == 0 {
+                            if cpu.get_reg(rm).bit(31) == 0 {
+                                (0, false)
+                            } else {
+                                (0xffffffff, true)
+                            }
+                        } else {
+                            (
+                                ((cpu.get_reg(rm) as i32) >> imm) as u32,
+                                cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                            )
+                        }
+                    }
+                    ShiftSource::Register(reg) => {
+                        let lower_bits = cpu.get_reg(reg).bits(0, 7);
+                        if lower_bits == 0 {
+                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                        } else if lower_bits < 32 {
+                            (
+                                ((cpu.get_reg(rm) as i32) >> lower_bits) as u32,
+                                cpu.get_reg(rm).bit((lower_bits - 1).try_into().unwrap()) == 1,
+                            )
+                        } else {
+                            if cpu.get_reg(rm).bit(31) == 0 {
+                                (0, false)
+                            } else {
+                                (0xffffffff, true)
+                            }
+                        }
+                    }
                 }
             }
             Self::ROR { rm, shift_source } => {
-                let shift_amt = shift_source.get_amt(cpu);
-                (
-                    cpu.get_reg(rm as usize).rotate_right(shift_amt),
-                    cpu.get_reg(rm as usize).bit(shift_amt as usize - 1) == 1,
-                )
+                match shift_source {
+                    ShiftSource::Immediate(imm) => 
+                        (
+                            cpu.get_reg(rm).rotate_right(imm),
+                            cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                        ),
+                    ShiftSource::Register(reg) => {
+                        let rs = cpu.get_reg(reg);
+                        if rs.bits(0, 7) == 0 {
+                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                        } else if rs.bits(0, 4) == 0 {
+                            (cpu.get_reg(rm), cpu.get_reg(rm).bit(31) == 1)
+                        } else {
+                            (cpu.get_reg(rm).rotate_right(rs.bits(0, 4)), cpu.get_reg(rm).bit((rs.bits(0, 4) - 1).try_into().unwrap()) == 1)
+                        }
+                    }
+                }
             }
             Self::RRX { rm } => {
                 let carry_in = cpu.get_cpsr_bits(CPSR::C);
                 (
-                    (cpu.get_reg(rm as usize) >> 1).bits(0, 30) | carry_in << 31,
-                    cpu.get_reg(rm as usize).bit(0) == 1,
+                    (cpu.get_reg(rm) >> 1).bits(0, 30) | carry_in << 31,
+                    cpu.get_reg(rm).bit(0) == 1,
                 )
             }
         }
@@ -253,12 +289,14 @@ pub struct Sub;
 pub struct Rsb;
 pub struct Add;
 pub struct Sbc;
+pub struct Rsc;
 pub struct Adc;
 pub struct Tst;
 pub struct Teq;
 pub struct Cmp;
 pub struct Orr;
 pub struct Mov;
+pub struct Bic;
 pub struct Mvn;
 
 struct FlagUpdates {
@@ -276,7 +314,7 @@ where
 {
     let fields = DataProcessingFields::parse(instruction);
     let (op2, c) = fields.shifter.op2(cpu);
-    let op1 = cpu.get_reg(fields.rn as usize);
+    let op1 = cpu.get_reg(fields.rn);
 
     let (output, flags) = op_closure(op1, op2, c);
 
@@ -300,7 +338,7 @@ where
             cpu.set_flag(CPSR::V, b);
         }
     }
-    cpu.set_reg(fields.rd as usize, output);
+    cpu.set_reg(fields.rd, output);
 }
 
 impl ArmInstruction for And {
@@ -438,6 +476,34 @@ impl ArmInstruction for Sbc {
     }
 }
 
+impl ArmInstruction for Rsc {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let (mut result, mut borrow) = op1.overflowing_sub(op2);
+            let mut overflow = op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31);
+            if shift_carry {
+                let (final_result, b2) = result.overflowing_sub(1);
+                let overflow2 = result.bit(31) != 0 && final_result.bit(31) == 1;
+                result = final_result;
+                borrow |= b2;
+                overflow |= overflow2;
+            }
+
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(!borrow),
+                v: Some(overflow),
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("RSC r{}, r{}, {:?}", fields.rd, fields.rn, fields.shifter)
+    }
+}
+
 impl ArmInstruction for Adc {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
@@ -471,7 +537,7 @@ impl ArmInstruction for Tst {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
 
-        let output = cpu.get_reg(fields.rn as usize) & op2;
+        let output = cpu.get_reg(fields.rn) & op2;
 
         cpu.set_flag(CPSR::N, output.bit(31) == 1);
         cpu.set_flag(CPSR::Z, if output == 0 { true } else { false });
@@ -489,7 +555,7 @@ impl ArmInstruction for Teq {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
 
-        let output = cpu.get_reg(fields.rn as usize) ^ op2;
+        let output = cpu.get_reg(fields.rn) ^ op2;
 
         let n_flag = output.bit(31);
         let z_flag = if output == 0 { 1 } else { 0 };
@@ -510,7 +576,7 @@ impl ArmInstruction for Cmp {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, _) = fields.shifter.op2(cpu);
 
-        let op1 = cpu.get_reg(fields.rn as usize);
+        let op1 = cpu.get_reg(fields.rn);
         let (output, borrow) = op1.overflowing_sub(op2);
 
         cpu.set_flag(CPSR::N, output.bit(31) == 1);
@@ -555,7 +621,7 @@ impl ArmInstruction for Mov {
         let fields = DataProcessingFields::parse(instruction);
         let (op2, c) = fields.shifter.op2(cpu);
 
-        cpu.set_reg(fields.rd as usize, op2);
+        cpu.set_reg(fields.rd, op2);
         if fields.rd == 15 {
             cpu.flush_pipeline();
         }
@@ -576,6 +642,25 @@ impl ArmInstruction for Mov {
     fn disassembly(&self, instruction: u32) -> String {
         let fields = DataProcessingFields::parse(instruction);
         format!("MOV r{}, {:?}", fields.rd, fields.shifter)
+    }
+}
+
+impl ArmInstruction for Bic {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+            let result = op1 & !op2;
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("BIC r{}, rd{}, {:?}", fields.rd, fields.rn, fields.shifter)
     }
 }
 

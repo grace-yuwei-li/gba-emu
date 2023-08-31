@@ -16,7 +16,7 @@ impl ArmInstruction for LDMFD {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let base_register = instruction.bits(16, 19);
 
-        let start_address = cpu.get_reg(base_register as usize);
+        let start_address = cpu.get_reg(base_register);
         let mut address = start_address;
         let mut reg_count = 0;
 
@@ -28,7 +28,7 @@ impl ArmInstruction for LDMFD {
             if instruction.bit(i) == 1 {
                 reg_count += 1;
                 let value = bus.read(address, cpu);
-                cpu.set_reg(i, value);
+                cpu.set_reg(i.try_into().unwrap(), value);
                 address += 4;
             }
         }
@@ -54,8 +54,8 @@ impl ArmInstruction for LDMFD {
         }
 
         if instruction.bit(21) == 1 {
-            let new_val = cpu.get_reg(base_register as usize) + 4 * reg_count;
-            cpu.set_reg(base_register as usize, new_val);
+            let new_val = cpu.get_reg(base_register) + 4 * reg_count;
+            cpu.set_reg(base_register, new_val);
         }
     }
 
@@ -69,7 +69,7 @@ impl ArmInstruction for STMFD {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let base_register = instruction.bits(16, 19);
 
-        let mut dest_address = cpu.get_reg(base_register as usize) - 4;
+        let mut dest_address = cpu.get_reg(base_register) - 4;
         let mut reg_count = 0;
 
         if base_register == 15 {
@@ -84,14 +84,14 @@ impl ArmInstruction for STMFD {
         for i in (0..=14).rev() {
             if instruction.bit(i) == 1 {
                 reg_count += 1;
-                bus.write(dest_address, cpu.get_reg(i));
+                bus.write(dest_address, cpu.get_reg(i.try_into().unwrap()));
                 dest_address -= 4;
             }
         }
 
         if instruction.bit(21) == 1 {
-            let new_val = cpu.get_reg(base_register as usize) - 4 * reg_count;
-            cpu.set_reg(base_register as usize, new_val);
+            let new_val = cpu.get_reg(base_register) - 4 * reg_count;
+            cpu.set_reg(base_register, new_val);
         }
     }
 

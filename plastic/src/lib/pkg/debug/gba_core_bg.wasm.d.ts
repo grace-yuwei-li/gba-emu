@@ -13,7 +13,6 @@ export function __wbg_ppudetails_free(a: number): void;
 export function __wbg_get_ppudetails_bg_mode(a: number): number;
 export function __wbg_set_ppudetails_bg_mode(a: number, b: number): void;
 export function ppudetails_screen(a: number): number;
-export function ppudetails_watched(a: number): number;
 export function disassemble_arm(a: number, b: number): void;
 export function __wbg_gbacore_free(a: number): void;
 export function __wbg_get_gbacore_stopped(a: number): number;

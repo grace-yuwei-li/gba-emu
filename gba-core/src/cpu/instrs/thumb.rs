@@ -164,7 +164,7 @@ impl Cpu {
             self.get_reg(13)
         };
 
-        self.set_reg(rd as usize, source + imm as u32);
+        self.set_reg(rd.into(), source + imm as u32);
     }
 
     fn add_hi_reg(&mut self, _: &mut Bus, instruction: u16) {
@@ -175,8 +175,8 @@ impl Cpu {
         let dest = (instruction.bit(7) << 3) | instruction.bits(0, 2);
         let src = instruction.bits(3, 6);
 
-        let result = self.get_reg(dest as usize) + self.get_reg(src as usize);
-        self.set_reg(dest as usize, result);
+        let result = self.get_reg(dest.into()) + self.get_reg(src.into());
+        self.set_reg(dest.into(), result);
     }
 
     fn thumb_mov_hi_reg(&mut self, _: &mut Bus, instruction: u16) {
@@ -185,7 +185,7 @@ impl Cpu {
 
         trace!(target: Targets::Thumb.value(), "MOV r{}, r{}", rd, rm);
 
-        self.set_reg(rd as usize, self.get_reg(rm as usize));
+        self.set_reg(rd.into(), self.get_reg(rm.into()));
 
         if rd == 15 {
             self.flush_pipeline();
@@ -194,7 +194,7 @@ impl Cpu {
 
     fn thumb_branch_exchange(&mut self, _: &mut Bus, instruction: u16) {
         let rm = instruction.bits(3, 6);
-        let val = self.get_reg(rm as usize);
+        let val = self.get_reg(rm.into());
 
         trace!(target: Targets::Thumb.value(), "BX r{}", rm);
 
@@ -221,7 +221,7 @@ impl Cpu {
 
         trace!(target: Targets::Thumb.value(), "MOV r{}, {:#x}", rd, imm);
 
-        self.set_reg(rd as usize, imm as u32);
+        self.set_reg(rd.into(), imm as u32);
 
         self.set_flag(CPSR::N, false);
         self.set_flag(CPSR::Z, if imm == 0 { true } else { false });
@@ -231,11 +231,11 @@ impl Cpu {
         let rd = instruction.bits(8, 10);
         let imm = instruction.bits(0, 7) as u32;
 
-        let (result, carry) = self.get_reg(rd as usize).overflowing_add(imm);
-        let overflow = self.get_reg(rd as usize).bit(31) == imm.bit(31)
-            && self.get_reg(rd as usize).bit(31) != result.bit(31);
+        let (result, carry) = self.get_reg(rd.into()).overflowing_add(imm);
+        let overflow = self.get_reg(rd.into()).bit(31) == imm.bit(31)
+            && self.get_reg(rd.into()).bit(31) != result.bit(31);
 
-        self.set_reg(rd as usize, result);
+        self.set_reg(rd.into(), result);
         self.set_flag(CPSR::N, result.bit(31) == 1);
         self.set_flag(CPSR::Z, result == 0);
         self.set_flag(CPSR::C, carry);
@@ -246,11 +246,11 @@ impl Cpu {
         let rd = instruction.bits(8, 10);
         let imm = instruction.bits(0, 7) as u32;
 
-        let (result, carry) = self.get_reg(rd as usize).overflowing_sub(imm);
-        let overflow = self.get_reg(rd as usize).bit(31) != imm.bit(31)
-            && self.get_reg(rd as usize).bit(31) != result.bit(31);
+        let (result, carry) = self.get_reg(rd.into()).overflowing_sub(imm);
+        let overflow = self.get_reg(rd.into()).bit(31) != imm.bit(31)
+            && self.get_reg(rd.into()).bit(31) != result.bit(31);
 
-        self.set_reg(rd as usize, result);
+        self.set_reg(rd.into(), result);
         self.set_flag(CPSR::N, result.bit(31) == 1);
         self.set_flag(CPSR::Z, result == 0);
         self.set_flag(CPSR::C, !carry);
@@ -279,14 +279,14 @@ impl Cpu {
         let rn = instruction.bits(3, 5);
         let rd = instruction.bits(0, 2);
 
-        let address = self.get_reg(rn as usize) + 2 * offset as u32;
+        let address = self.get_reg(rn.into()) + 2 * offset as u32;
 
-        println!("rn: {} {}", rn, self.get_reg(rn as usize));
+        println!("rn: {} {}", rn, self.get_reg(rn.into()));
 
         trace!(target: Targets::Thumb.value(), "STRH, r{}, {:#x}", rd, address);
 
         if address.bit(0) == 0 {
-            bus.write_half(address, self.get_reg(rd as usize) as u16);
+            bus.write_half(address, self.get_reg(rd.into()) as u16);
         } else {
             todo!("UNPREDICTABLE")
         }
@@ -298,7 +298,7 @@ impl Cpu {
 
         let address = (self.get_reg(15) & 0xffff_fffc) + imm as u32 * 4;
         let value = bus.read(address, self);
-        self.set_reg(rd as usize, value);
+        self.set_reg(rd.into(), value);
     }
 
     fn move_shifted_register(&mut self, bus: &mut Bus, instruction: u16) {
@@ -311,53 +311,53 @@ impl Cpu {
             0b00 => {
                 // LSL
                 if imm == 0 {
-                    self.set_reg(rd as usize, self.get_reg(rm as usize));
+                    self.set_reg(rd.into(), self.get_reg(rm.into()));
                 } else {
                     self.set_flag(
                         CPSR::C,
-                        self.get_reg(rm as usize).bit(32 - imm as usize) == 1,
+                        self.get_reg(rm.into()).bit(32 - imm as usize) == 1,
                     );
-                    self.set_reg(rd as usize, self.get_reg(rm as usize) << imm);
+                    self.set_reg(rd.into(), self.get_reg(rm.into()) << imm);
                 }
-                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
-                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+                self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);
             }
             0b01 => {
                 // LSR
                 if imm == 0 {
-                    self.set_flag(CPSR::C, self.get_reg(rm as usize).bit(31) == 1);
-                    self.set_reg(rd as usize, 0);
+                    self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(31) == 1);
+                    self.set_reg(rd.into(), 0);
                 } else {
                     self.set_flag(
                         CPSR::C,
-                        self.get_reg(rm as usize).bit(imm as usize - 1) == 1,
+                        self.get_reg(rm.into()).bit(imm as usize - 1) == 1,
                     );
-                    self.set_reg(rd as usize, self.get_reg(rm as usize) >> imm);
+                    self.set_reg(rd.into(), self.get_reg(rm.into()) >> imm);
                 }
-                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
-                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+                self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);
             }
             0b10 => {
                 // ASR
                 if imm == 0 {
-                    self.set_flag(CPSR::C, self.get_reg(rm as usize).bit(31) == 1);
-                    if self.get_reg(rm as usize).bit(31) == 0 {
-                        self.set_reg(rd as usize, 0);
+                    self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(31) == 1);
+                    if self.get_reg(rm.into()).bit(31) == 0 {
+                        self.set_reg(rd.into(), 0);
                     } else {
-                        self.set_reg(rd as usize, 0xffff_ffff);
+                        self.set_reg(rd.into(), 0xffff_ffff);
                     }
                 } else {
                     self.set_flag(
                         CPSR::C,
-                        self.get_reg(rm as usize).bit(imm as usize - 1) == 1,
+                        self.get_reg(rm.into()).bit(imm as usize - 1) == 1,
                     );
                     self.set_reg(
-                        rd as usize,
-                        ((self.get_reg(rm as usize) as i32) >> imm) as u32,
+                        rd.into(),
+                        ((self.get_reg(rm.into()) as i32) >> imm) as u32,
                     );
                 }
-                self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
-                self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+                self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
+                self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);
             }
             _ => unreachable!(),
         }
@@ -399,7 +399,7 @@ impl Cpu {
 
         let term: u32 = if i == 0 {
             let rn = instruction.bits(6, 8);
-            self.get_reg(rn as usize)
+            self.get_reg(rn.into())
         } else {
             instruction.bits(6, 8).into()
         };
@@ -408,27 +408,27 @@ impl Cpu {
         let rd = instruction.bits(0, 2);
 
         let (result, carry, overflow) = if op == 0 {
-            let (result, carry) = self.get_reg(rs as usize).overflowing_add(term);
+            let (result, carry) = self.get_reg(rs.into()).overflowing_add(term);
             let overflow =
-                self.get_reg(rs as usize).bit(31) == term.bit(31) && term.bit(31) != result.bit(31);
+                self.get_reg(rs.into()).bit(31) == term.bit(31) && term.bit(31) != result.bit(31);
             (result, carry, overflow)
         } else {
-            let (result, carry) = self.get_reg(rs as usize).overflowing_sub(term);
-            let overflow = self.get_reg(rs as usize).bit(31) != term.bit(31)
-                && self.get_reg(rs as usize).bit(31) != result.bit(31);
+            let (result, carry) = self.get_reg(rs.into()).overflowing_sub(term);
+            let overflow = self.get_reg(rs.into()).bit(31) != term.bit(31)
+                && self.get_reg(rs.into()).bit(31) != result.bit(31);
             (result, carry, overflow)
         };
 
-        self.set_reg(rd as usize, result);
+        self.set_reg(rd.into(), result);
 
         if op == 0 {
-            self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
-            self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+            self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
+            self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);
             self.set_flag(CPSR::C, carry);
             self.set_flag(CPSR::V, overflow);
         } else {
-            self.set_flag(CPSR::N, self.get_reg(rd as usize).bit(31) == 1);
-            self.set_flag(CPSR::Z, self.get_reg(rd as usize) == 0);
+            self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
+            self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);
             self.set_flag(CPSR::C, !carry); // Could be inverted, not 100%
             self.set_flag(CPSR::V, overflow);
         }
@@ -441,8 +441,8 @@ impl Cpu {
 
         match opcode {
             0b1110 => {
-                let result = self.get_reg(rd as usize) & !self.get_reg(rs as usize);
-                self.set_reg(rd as usize, result);
+                let result = self.get_reg(rd.into()) & !self.get_reg(rs.into());
+                self.set_reg(rd.into(), result);
                 self.set_flag(CPSR::N, result.bit(31) == 1);
                 self.set_flag(CPSR::Z, result == 0);
             }
@@ -459,17 +459,17 @@ impl Cpu {
         if load {
             todo!()
         } else {
-            let start_address = self.get_reg(rn as usize);
+            let start_address = self.get_reg(rn.into());
             let mut address = start_address;
             for i in 0..=7 {
                 if reg_list.bit(i) == 1 {
-                    bus.write(address, self.get_reg(i));
+                    bus.write(address, self.get_reg(i.try_into().unwrap()));
                     address += 4;
                 }
             }
             self.set_reg(
-                rn as usize,
-                self.get_reg(rn as usize) + reg_list.count_ones() * 4,
+                rn.into(),
+                self.get_reg(rn.into()) + reg_list.count_ones() * 4,
             );
         }
     }
@@ -489,9 +489,9 @@ impl Cpu {
 
         match (h_flag, sign_extend) {
             (0, 1) => {
-                let address = self.get_reg(rb as usize) + self.get_reg(ro as usize);
+                let address = self.get_reg(rb.into()) + self.get_reg(ro.into());
                 let data = bus.read_half(address, self);
-                self.set_reg(rd as usize, data as u32);
+                self.set_reg(rd.into(), data as u32);
             }
             _ => todo!("H:{} S:{}", h_flag, sign_extend),
         }

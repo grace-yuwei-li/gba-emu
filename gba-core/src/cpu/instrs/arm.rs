@@ -137,11 +137,13 @@ impl MetaInstr {
                 0b0101 => Box::new(data_processing::Adc),
                 0b0100 => Box::new(data_processing::Add),
                 0b0110 => Box::new(data_processing::Sbc),
+                0b0111 => Box::new(data_processing::Rsc),
                 0b1000 => Box::new(data_processing::Tst),
                 0b1001 => Box::new(data_processing::Teq),
                 0b1010 => Box::new(data_processing::Cmp),
                 0b1100 => Box::new(data_processing::Orr),
                 0b1101 => Box::new(data_processing::Mov),
+                0b1110 => Box::new(data_processing::Bic),
                 0b1111 => Box::new(data_processing::Mvn),
                 0b0000..=0b1111 => Box::new(TodoInstruction::new_message(format!(
                     "DataProcessing opcode: {:b}",

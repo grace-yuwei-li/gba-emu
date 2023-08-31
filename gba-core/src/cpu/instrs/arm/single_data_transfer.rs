@@ -44,7 +44,7 @@ impl AddressingModeSource {
         match *self {
             Self::Immediate { rn: _, u: _, offset } => offset,
             Self::Register { rn: _, u: _, rm, shift, shift_imm } => {
-                let rm = cpu.get_reg(rm as usize);
+                let rm = cpu.get_reg(rm);
                 match shift {
                     0b00 => rm << shift_imm,
                     0b01 if shift_imm == 0 => 0,
@@ -115,11 +115,11 @@ impl AddressingMode {
     pub fn address(&self, cpu: &Cpu) -> u32 {
         match self.indexing {
             AddressingModeIndexing::Offset | AddressingModeIndexing::PreIndexed => if self.source.u() {
-                cpu.get_reg(self.source.rn() as usize).wrapping_add(self.source.offset(cpu))
+                cpu.get_reg(self.source.rn()).wrapping_add(self.source.offset(cpu))
             } else {
-                cpu.get_reg(self.source.rn() as usize).wrapping_sub(self.source.offset(cpu))
+                cpu.get_reg(self.source.rn()).wrapping_sub(self.source.offset(cpu))
             },
-            AddressingModeIndexing::PostIndexed => cpu.get_reg(self.source.rn() as usize),
+            AddressingModeIndexing::PostIndexed => cpu.get_reg(self.source.rn()),
         }
     }
 
@@ -179,12 +179,12 @@ impl ArmInstruction for STR {
         let address = addressing_mode.address(cpu);
 
         if b == 0 {
-            bus.write(address, cpu.get_reg(rd as usize));
+            bus.write(address, cpu.get_reg(rd));
         } else {
-            bus.write_byte(address, cpu.get_reg(rd as usize) as u8);
+            bus.write_byte(address, cpu.get_reg(rd) as u8);
         }
         if addressing_mode.write_back() {
-            cpu.set_reg(rn as usize, address);
+            cpu.set_reg(rn, address);
         }
     }
 
@@ -211,9 +211,9 @@ impl ArmInstruction for LDR {
             bus.read_byte(address, cpu) as u32
         };
 
-        cpu.set_reg(rd as usize, val);
+        cpu.set_reg(rd, val);
         if addressing_mode.write_back() {
-            cpu.set_reg(rn as usize, address);
+            cpu.set_reg(rn, address);
         }
 
         if rd == 15 {

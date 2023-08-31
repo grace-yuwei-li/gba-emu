@@ -14,7 +14,7 @@ impl ArmInstruction for BranchAndExchange {
             todo!("undefined behaviour");
         }
 
-        let dest = cpu.get_reg(rn as usize);
+        let dest = cpu.get_reg(rn);
 
         if dest.bit(0) == 1 {
             cpu.set_state(State::Thumb);

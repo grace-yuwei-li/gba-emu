@@ -22,11 +22,11 @@ impl ArmInstruction for Mla {
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
 
-        let rn = cpu.get_reg(rn as usize);
-        let rs = cpu.get_reg(rs as usize);
-        let rm = cpu.get_reg(rm as usize);
+        let rn = cpu.get_reg(rn);
+        let rs = cpu.get_reg(rs);
+        let rm = cpu.get_reg(rm);
 
-        cpu.set_reg(rd as usize, rm * rs + rn);
+        cpu.set_reg(rd, rm * rs + rn);
         if s == 1 {
             todo!()
         }

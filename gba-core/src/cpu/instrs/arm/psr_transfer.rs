@@ -19,11 +19,11 @@ impl MsrFields {
                 imm.rotate_right(2 * rotate_imm)
             } else {
                 let rm = instruction.bits(0, 3);
-                cpu.get_reg(rm as usize)
+                cpu.get_reg(rm)
             };
         } else {
             let rm = instruction.bits(0, 3);
-            operand = cpu.get_reg(rm as usize);
+            operand = cpu.get_reg(rm);
         }
 
         Self {
@@ -42,9 +42,9 @@ impl ArmInstruction for MRS {
         let r = instruction.bit(22);
         let rd = instruction.bits(12, 15);
         if r == 1 {
-            cpu.set_reg(rd as usize, cpu.regs.spsr(&cpu.get_mode()));
+            cpu.set_reg(rd, cpu.regs.spsr(&cpu.get_mode()));
         } else {
-            cpu.set_reg(rd as usize, cpu.regs.cpsr);
+            cpu.set_reg(rd, cpu.regs.cpsr);
         }
     }
     fn disassembly(&self, instruction: u32) -> String {

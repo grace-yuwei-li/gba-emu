@@ -18,7 +18,8 @@ pub struct Regs {
 }
 
 impl Regs {
-    pub fn get(&self, reg: usize, mode: &Mode) -> u32 {
+    pub fn get(&self, reg: u32, mode: &Mode) -> u32 {
+        let reg: usize = reg.try_into().unwrap();
         match *mode {
             Mode::User | Mode::System => self.sys_user[reg],
             Mode::FIQ if 8 <= reg && reg <= 14 => self.fiq[reg - 8],
@@ -30,7 +31,8 @@ impl Regs {
         }
     }
 
-    pub fn get_mut(&mut self, reg: usize, mode: &Mode) -> &mut u32 {
+    pub fn get_mut(&mut self, reg: u32, mode: &Mode) -> &mut u32 {
+        let reg: usize = reg.try_into().unwrap();
         match *mode {
             Mode::User | Mode::System => &mut self.sys_user[reg],
             Mode::FIQ if 8 <= reg && reg <= 14 => &mut self.fiq[reg - 8],

@@ -36,7 +36,7 @@ impl HalfwordTransFields {
             offset_high << 4 | offset_low
         } else {
             let rm = self.instruction.bits(0, 3);
-            cpu.get_reg(rm as usize)
+            cpu.get_reg(rm)
         }
     }
 
@@ -44,15 +44,15 @@ impl HalfwordTransFields {
     fn address_mode_2(&self, cpu: &Cpu) -> (u32, u32) {
         let offset = self.offset(cpu);
         let final_address = if self.u {
-            cpu.get_reg(self.rn as usize) + offset
+            cpu.get_reg(self.rn) + offset
         } else {
-            cpu.get_reg(self.rn as usize) - offset
+            cpu.get_reg(self.rn) - offset
         };
 
         let address = if self.p {
             final_address
         } else {
-            cpu.get_reg(self.rn as usize)
+            cpu.get_reg(self.rn)
         };
 
         (address, final_address)
@@ -67,23 +67,23 @@ struct LDRSH;
 #[inline]
 fn execute_h<F>(cpu: &mut Cpu, bus: &mut Bus, instruction: u32, func: F)
 where
-    F: FnOnce(&mut Cpu, &mut Bus, usize, u32) -> (),
+    F: FnOnce(&mut Cpu, &mut Bus, u32, u32) -> (),
 {
     let fields = HalfwordTransFields::parse(instruction);
     let (address, final_address) = fields.address_mode_2(cpu);
 
     if address.bit(0) == 0 {
-        func(cpu, bus, fields.rd as usize, address);
+        func(cpu, bus, fields.rd, address);
         let val = bus.read_half(address, cpu);
-        cpu.set_reg(fields.rd as usize, val as u32);
+        cpu.set_reg(fields.rd, val as u32);
     } else {
         todo!("UNPREDICTABLE, LDRH address is not halfword-aligned")
     }
 
     if !fields.p && !fields.w {
-        cpu.set_reg(fields.rn as usize, final_address);
+        cpu.set_reg(fields.rn, final_address);
     } else if fields.p && fields.w {
-        cpu.set_reg(fields.rn as usize, final_address);
+        cpu.set_reg(fields.rn, final_address);
     } else if !fields.p && fields.w {
         todo!("UNPREDICTABLE, STHR P=0 and W=1")
     }

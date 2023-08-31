@@ -1,6 +1,5 @@
 mod utils;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::console;
 
 use crate::{utils::{get_u32, set_u32, AddressableBits}, ppu::utils::bg_mode_3};
 
@@ -19,7 +18,6 @@ pub struct Ppu {
 pub struct PpuDetails {
     pub bg_mode: u8,
     screen: Vec<u8>,
-    watched: (u32, u32),
 }
 
 #[wasm_bindgen]
@@ -29,13 +27,6 @@ impl PpuDetails {
         let array = js_sys::Uint8ClampedArray::new_with_length(bytes.len().try_into().unwrap());
         array.copy_from(bytes);
         array
-    }
-
-    pub fn watched(&self) -> js_sys::Array {
-        let arr = js_sys::Array::new_with_length(2);
-        arr.set(0, self.watched.0.into());
-        arr.set(1, self.watched.1.into());
-        arr
     }
 }
 
@@ -69,7 +60,6 @@ impl Ppu {
         match index {
             0x5000000..=0x50003ff => set_u32(&mut self.bg_obj_palette, index - 0x5000000, value),
             0x6000000..=0x6017fff => {
-                console::log_2(&"write to index".into(), &format!("{:x} {:b}", index, value).into());
                 set_u32(&mut self.vram, index - 0x6000000, value);
             }
             0x7000000..=0x70003ff => set_u32(&mut self.oam, index - 0x7000000, value),
@@ -103,7 +93,6 @@ impl Ppu {
         PpuDetails {
             bg_mode: self.bg_mode(),
             screen: self.get_screen(),
-            watched: (0x6000690, self.read_simple(0x6000690)),
         }
     }
 

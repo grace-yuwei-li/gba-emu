@@ -118,10 +118,6 @@ export class PpuDetails {
 */
   screen(): Uint8ClampedArray;
 /**
-* @returns {Array<any>}
-*/
-  watched(): Array<any>;
-/**
 */
   bg_mode: number;
 }
@@ -142,7 +138,6 @@ export interface InitOutput {
   readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
   readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
   readonly ppudetails_screen: (a: number) => number;
-  readonly ppudetails_watched: (a: number) => number;
   readonly disassemble_arm: (a: number, b: number) => void;
   readonly __wbg_gbacore_free: (a: number) => void;
   readonly __wbg_get_gbacore_stopped: (a: number) => number;

@@ -48,7 +48,7 @@ pub struct CpuDetails {
 
 #[wasm_bindgen]
 impl CpuDetails {
-    pub fn reg(&self, index: usize, mode: JsValue) -> Option<u32> {
+    pub fn reg(&self, index: u32, mode: JsValue) -> Option<u32> {
         let mode: Mode = serde_wasm_bindgen::from_value(mode).ok()?;
         Some(self.regs.get(index, &mode))
     }
@@ -136,7 +136,7 @@ impl Cpu {
         self.regs.cpsr = val;
     }
 
-    fn get_reg(&self, idx: usize) -> u32 {
+    fn get_reg(&self, idx: u32) -> u32 {
         if idx == 15 {
             match self.get_state() {
                 State::ARM => self.get_reg_internal(15) - 4,
@@ -147,7 +147,7 @@ impl Cpu {
         }
     }
 
-    fn get_reg_internal(&self, idx: usize) -> u32 {
+    fn get_reg_internal(&self, idx: u32) -> u32 {
         self.regs.get(idx, &self.get_mode())
     }
 
@@ -156,12 +156,12 @@ impl Cpu {
         self.get_reg_internal(15) - 8
     }
 
-    fn set_reg(&mut self, idx: usize, val: u32) {
+    fn set_reg(&mut self, idx: u32, val: u32) {
         let mode = &self.get_mode();
         *self.regs.get_mut(idx, mode) = val;
     }
 
-    pub fn set_reg_with_mode(&mut self, idx: usize, mode: Mode, val: u32) {
+    pub fn set_reg_with_mode(&mut self, idx: u32, mode: Mode, val: u32) {
         *self.regs.get_mut(idx, &mode) = val;
     }
 
