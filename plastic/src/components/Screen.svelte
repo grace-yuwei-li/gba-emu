@@ -30,8 +30,8 @@
 
 <style>
     canvas {
-        width: calc(5 * 240px);
-        height: calc(5 * 160px);
-        padding: 5em;
+        width: calc(3 * 240px);
+        height: calc(3 * 160px);
+        padding: 1em;
     }
 </style>
