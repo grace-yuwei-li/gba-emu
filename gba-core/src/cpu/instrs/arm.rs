@@ -157,7 +157,7 @@ impl MetaInstr {
             Self::PsrTransfer => Self::decode_psr_transfer(instruction),
             Self::SingleDataTrans => Self::decode_single_data_transfer(instruction),
             Self::SoftwareInterrupt => Box::new(swi::Swi),
-            Self::Multiply => Box::new(multiply::Multiply),
+            Self::Multiply => multiply::decode_multiply(instruction),
             _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
         }
     }
