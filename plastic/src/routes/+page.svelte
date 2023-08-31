@@ -15,11 +15,13 @@
     <div>
         <Debugger />
     </div>
-    <div>
-        <EmuInfo />
-    </div>
-    <div id="screen-wrapper">
-        <Screen />
+    <div class="column" >
+        <div>
+            <EmuInfo />
+        </div>
+        <div id="screen-wrapper">
+            <Screen />
+        </div>
     </div>
 </div>
 
@@ -46,5 +48,10 @@
         display: flex;
         justify-content: center;
         align-items: center;
+    }
+
+    .column {
+        display: flex;
+        flex-direction: column;
     }
 </style>

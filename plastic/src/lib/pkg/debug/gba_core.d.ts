@@ -1,11 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
-* @param {Uint8Array} input
-* @returns {Uint8ClampedArray}
-*/
-export function to_canvas_binary_data(input: Uint8Array): Uint8ClampedArray;
-/**
 * @param {number} instruction
 * @returns {string}
 */
@@ -123,9 +118,9 @@ export class PpuDetails {
 */
   screen(): Uint8ClampedArray;
 /**
-* @returns {Uint8ClampedArray}
+* @returns {Array<any>}
 */
-  vram(): Uint8ClampedArray;
+  watched(): Array<any>;
 /**
 */
   bg_mode: number;
@@ -143,12 +138,11 @@ export interface InitOutput {
   readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
   readonly cpudetails_mode: (a: number) => number;
   readonly cpudetails_pc: (a: number) => number;
-  readonly to_canvas_binary_data: (a: number, b: number) => number;
   readonly __wbg_ppudetails_free: (a: number) => void;
   readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
   readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
   readonly ppudetails_screen: (a: number) => number;
-  readonly ppudetails_vram: (a: number) => number;
+  readonly ppudetails_watched: (a: number) => number;
   readonly disassemble_arm: (a: number, b: number) => void;
   readonly __wbg_gbacore_free: (a: number) => void;
   readonly __wbg_get_gbacore_stopped: (a: number) => number;

@@ -54,6 +54,8 @@
 						PC
 					{:else if index === 14}
 						LR
+                    {:else if index === 13}
+                        SP
 					{:else}
 						r{index}
 					{/if}
