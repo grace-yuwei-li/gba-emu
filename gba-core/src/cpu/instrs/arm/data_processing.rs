@@ -138,14 +138,33 @@ impl ShifterOperand {
                 },
             ),
             Self::LSL { rm, shift_source } => {
-                let shift_amt = shift_source.get_amt(cpu);
-                if shift_amt == 0 {
-                    (cpu.get_reg(rm as usize), cpu.get_cpsr_bits(CPSR::C) == 1)
-                } else {
-                    (
-                        cpu.get_reg(rm as usize) << shift_amt,
-                        cpu.get_reg(rm as usize).bit(32 - shift_amt as usize) == 1,
-                    )
+                match shift_source {
+                    ShiftSource::Immediate(imm) => {
+                        if imm == 0 {
+                            (cpu.get_reg(rm as usize), cpu.get_cpsr_bits(CPSR::C) == 1)
+                        } else {
+                            (
+                                cpu.get_reg(rm as usize) << imm,
+                                cpu.get_reg(rm as usize).bit(32 - imm as usize) == 1,
+                            )
+                        }
+                    }
+                    ShiftSource::Register(reg) => {
+                        let lower_bits = cpu.get_reg(reg as usize).bits(0, 7); 
+
+                        if lower_bits == 0 {
+                            (cpu.get_reg(rm as usize), cpu.get_cpsr_bits(CPSR::C) == 1)
+                        } else if lower_bits < 32 {
+                            (
+                                cpu.get_reg(rm as usize) << lower_bits,
+                                cpu.get_reg(rm as usize).bit(32 - lower_bits as usize) == 1,
+                            )
+                        } else if lower_bits == 32 {
+                            (0, cpu.get_reg(rm as usize).bit(0) == 1)
+                        } else {
+                            (0, false)
+                        }
+                    }
                 }
             }
             Self::LSR { rm, shift_source } => {
