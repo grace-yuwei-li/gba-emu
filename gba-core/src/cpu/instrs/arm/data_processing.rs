@@ -1,4 +1,5 @@
 use crate::cpu::CPSR;
+use crate::cpu::Mode;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
@@ -139,42 +140,52 @@ impl ShifterOperand {
             ),
             Self::LSL { rm, shift_source } => {
                 let shift_amt = shift_source.get_amt(cpu);
+                let mut rm_val = cpu.get_reg(rm);
+                if self.takes_extra_cycle() && rm == 15 {
+                    rm_val += 4;
+                }
+
                 if shift_amt == 0 {
-                    (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                    (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
                 } else if shift_amt < 32 {
                     (
-                        cpu.get_reg(rm) << shift_amt,
-                        cpu.get_reg(rm).bit((32 - shift_amt).try_into().unwrap()) == 1,
+                        rm_val << shift_amt,
+                        rm_val.bit((32 - shift_amt).try_into().unwrap()) == 1,
                     )
                 } else if shift_amt == 32 {
-                    (0, cpu.get_reg(rm).bit(0) == 1)
+                    (0, rm_val.bit(0) == 1)
                 } else {
                     (0, false)
                 }
             }
             Self::LSR { rm, shift_source } => {
+                let mut rm_val = cpu.get_reg(rm);
+                if self.takes_extra_cycle() && rm == 15 {
+                    rm_val += 4;
+                }
+
                 match shift_source {
                     ShiftSource::Immediate(imm) => {
                         if imm == 0 {
-                            (0, cpu.get_reg(rm).bit(31) == 1)
+                            (0, rm_val.bit(31) == 1)
                         } else {
                             (
-                                cpu.get_reg(rm) >> imm,
-                                cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                                rm_val >> imm,
+                                rm_val.bit((imm - 1).try_into().unwrap()) == 1,
                                 )
                         }
                     }
                     ShiftSource::Register(reg) => {
                         let rs = cpu.get_reg(reg);
                         if rs.bits(0, 7) == 0 {
-                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
                         } else if rs.bits(0, 7) < 32 {
                             (
-                                cpu.get_reg(rm) >> rs.bits(0, 7),
-                                cpu.get_reg(rm).bit((rs.bits(0, 7) - 1).try_into().unwrap()) == 1,
+                                rm_val >> rs.bits(0, 7),
+                                rm_val.bit((rs.bits(0, 7) - 1).try_into().unwrap()) == 1,
                             )
                         } else if rs.bits(0, 7) == 32 {
-                            (0, cpu.get_reg(rm).bit(31) == 1)
+                            (0, rm_val.bit(31) == 1)
                         } else {
                             (0, false)
                         }
@@ -182,32 +193,37 @@ impl ShifterOperand {
                 }
             }
             Self::ASR { rm, shift_source } => {
+                let mut rm_val = cpu.get_reg(rm);
+                if self.takes_extra_cycle() && rm == 15 {
+                    rm_val += 4;
+                }
+
                 match shift_source {
                     ShiftSource::Immediate(imm) => {
                         if imm == 0 {
-                            if cpu.get_reg(rm).bit(31) == 0 {
+                            if rm_val.bit(31) == 0 {
                                 (0, false)
                             } else {
                                 (0xffffffff, true)
                             }
                         } else {
                             (
-                                ((cpu.get_reg(rm) as i32) >> imm) as u32,
-                                cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                                ((rm_val as i32) >> imm) as u32,
+                                rm_val.bit((imm - 1).try_into().unwrap()) == 1,
                             )
                         }
                     }
                     ShiftSource::Register(reg) => {
                         let lower_bits = cpu.get_reg(reg).bits(0, 7);
                         if lower_bits == 0 {
-                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
                         } else if lower_bits < 32 {
                             (
-                                ((cpu.get_reg(rm) as i32) >> lower_bits) as u32,
-                                cpu.get_reg(rm).bit((lower_bits - 1).try_into().unwrap()) == 1,
+                                ((rm_val as i32) >> lower_bits) as u32,
+                                rm_val.bit((lower_bits - 1).try_into().unwrap()) == 1,
                             )
                         } else {
-                            if cpu.get_reg(rm).bit(31) == 0 {
+                            if rm_val.bit(31) == 0 {
                                 (0, false)
                             } else {
                                 (0xffffffff, true)
@@ -217,20 +233,25 @@ impl ShifterOperand {
                 }
             }
             Self::ROR { rm, shift_source } => {
+                let mut rm_val = cpu.get_reg(rm);
+                if self.takes_extra_cycle() && rm == 15 {
+                    rm_val += 4;
+                }
+
                 match shift_source {
                     ShiftSource::Immediate(imm) => 
                         (
-                            cpu.get_reg(rm).rotate_right(imm),
-                            cpu.get_reg(rm).bit((imm - 1).try_into().unwrap()) == 1,
+                            rm_val.rotate_right(imm),
+                            rm_val.bit((imm - 1).try_into().unwrap()) == 1,
                         ),
                     ShiftSource::Register(reg) => {
                         let rs = cpu.get_reg(reg);
                         if rs.bits(0, 7) == 0 {
-                            (cpu.get_reg(rm), cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
                         } else if rs.bits(0, 4) == 0 {
-                            (cpu.get_reg(rm), cpu.get_reg(rm).bit(31) == 1)
+                            (rm_val, cpu.get_reg(rm).bit(31) == 1)
                         } else {
-                            (cpu.get_reg(rm).rotate_right(rs.bits(0, 4)), cpu.get_reg(rm).bit((rs.bits(0, 4) - 1).try_into().unwrap()) == 1)
+                            (rm_val.rotate_right(rs.bits(0, 4)), cpu.get_reg(rm).bit((rs.bits(0, 4) - 1).try_into().unwrap()) == 1)
                         }
                     }
                 }
@@ -244,23 +265,23 @@ impl ShifterOperand {
             }
         }
     }
-}
 
-#[derive(Debug)]
-struct RegOperandInfo {
-    shift_source: ShiftSource,
-    rm: u32,
-}
-
-struct DataProcessingOperand {
-    op2: u32,
-    carry_out: u32, // Single bit
-    /// Debug/logging information about how op2 was derived
-    op2_info: Option<RegOperandInfo>,
+    fn takes_extra_cycle(&self) -> bool {
+        let shift_source = match *self {
+            Self::Imm { .. } | Self::RRX { .. } => return false,
+            Self::LSL { shift_source, .. } => shift_source,
+            Self::LSR { shift_source, .. } => shift_source,
+            Self::ASR { shift_source, .. } => shift_source,
+            Self::ROR { shift_source, .. } => shift_source,
+        };
+        if let ShiftSource::Register(_) = shift_source {
+            return true;
+        }
+        return false;
+    }
 }
 
 pub(super) struct DataProcessingFields {
-    instruction: u32,
     set: bool,
     rn: u32,
     rd: u32,
@@ -274,7 +295,6 @@ impl DataProcessingFields {
         let rd = (instruction >> 12) & 0xf;
 
         DataProcessingFields {
-            instruction,
             set,
             rn,
             rd,
@@ -294,6 +314,7 @@ pub struct Adc;
 pub struct Tst;
 pub struct Teq;
 pub struct Cmp;
+pub struct Cmn;
 pub struct Orr;
 pub struct Mov;
 pub struct Bic;
@@ -307,14 +328,19 @@ struct FlagUpdates {
 }
 
 #[inline]
-fn execute_op<F>(cpu: &mut Cpu, _: &mut Bus, instruction: u32, op_closure: F)
+fn execute_op<F>(cpu: &mut Cpu, instruction: u32, flag_only: bool, op_closure: F)
 where
     // op1, op2, shifter carry
     F: Fn(u32, u32, bool) -> (u32, FlagUpdates),
 {
     let fields = DataProcessingFields::parse(instruction);
     let (op2, c) = fields.shifter.op2(cpu);
-    let op1 = cpu.get_reg(fields.rn);
+
+    let op1 = if fields.shifter.takes_extra_cycle() && fields.rn == 15 {
+        cpu.get_reg(fields.rn) + 4
+    } else {
+        cpu.get_reg(fields.rn)
+    };
 
     let (output, flags) = op_closure(op1, op2, c);
 
@@ -322,7 +348,8 @@ where
         if cpu.mode_has_spsr() {
             cpu.regs.cpsr = cpu.regs.spsr(&cpu.get_mode());
         } else {
-            todo!("unpredictable")
+            //todo!("unpredictable {:04b}", instruction.bits(21, 24))
+            cpu.regs.cpsr = cpu.regs.spsr(&cpu.get_mode());
         }
     } else if fields.set {
         if let Some(b) = flags.n {
@@ -338,12 +365,18 @@ where
             cpu.set_flag(CPSR::V, b);
         }
     }
-    cpu.set_reg(fields.rd, output);
+
+    if !flag_only {
+        cpu.set_reg(fields.rd, output);
+        if fields.rd == 15 {
+            cpu.flush_pipeline();
+        }
+    }
 }
 
 impl ArmInstruction for And {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 & op2;
             (result, FlagUpdates {
                 n: Some(result.bit(31) == 1),
@@ -361,8 +394,8 @@ impl ArmInstruction for And {
 }
 
 impl ArmInstruction for Eor {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 ^ op2;
             (result, FlagUpdates {
                 n: Some(result.bit(31) == 1),
@@ -380,8 +413,8 @@ impl ArmInstruction for Eor {
 }
 
 impl ArmInstruction for Sub {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, _| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, _| {
             let (result, borrow) = op1.overflowing_sub(op2);
             (
                 result,
@@ -402,8 +435,8 @@ impl ArmInstruction for Sub {
 }
 
 impl ArmInstruction for Rsb {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, _| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, _| {
             let (result, borrow) = op2.overflowing_sub(op1);
             (
                 result,
@@ -424,8 +457,8 @@ impl ArmInstruction for Rsb {
 }
 
 impl ArmInstruction for Add {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, _| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, _| {
             let (result, c) = op1.overflowing_add(op2);
             let n = result.bit(31) == 1;
             let z = result == 0;
@@ -449,8 +482,8 @@ impl ArmInstruction for Add {
 }
 
 impl ArmInstruction for Sbc {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let (mut result, mut borrow) = op1.overflowing_sub(op2);
             let mut overflow = op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31);
             if !shift_carry {
@@ -477,11 +510,11 @@ impl ArmInstruction for Sbc {
 }
 
 impl ArmInstruction for Rsc {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op2, op1, shift_carry| {
             let (mut result, mut borrow) = op1.overflowing_sub(op2);
             let mut overflow = op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31);
-            if shift_carry {
+            if !shift_carry {
                 let (final_result, b2) = result.overflowing_sub(1);
                 let overflow2 = result.bit(31) != 0 && final_result.bit(31) == 1;
                 result = final_result;
@@ -505,13 +538,14 @@ impl ArmInstruction for Rsc {
 }
 
 impl ArmInstruction for Adc {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        let c_flag = cpu.get_cpsr_bits(CPSR::C);
+        execute_op(cpu, instruction, false, |op1, op2, _| {
             let (mut result, mut carry) = op1.overflowing_add(op2);
-            let mut overflow = op1.bit(31) == op2.bit(31) && op1.bit(31) != result.bit(31);
-            if shift_carry {
+            let mut overflow = add_overflows(op1, op2, result);
+            if c_flag == 1 {
                 let (final_result, c2) = result.overflowing_add(1);
-                let overflow2 = result.bit(31) == 0 && final_result.bit(31) == 1;
+                let overflow2 = add_overflows(result, 1, final_result);
                 result = final_result;
                 carry |= c2;
                 overflow |= overflow2;
@@ -534,14 +568,15 @@ impl ArmInstruction for Adc {
 
 impl ArmInstruction for Tst {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        let fields = DataProcessingFields::parse(instruction);
-        let (op2, c) = fields.shifter.op2(cpu);
-
-        let output = cpu.get_reg(fields.rn) & op2;
-
-        cpu.set_flag(CPSR::N, output.bit(31) == 1);
-        cpu.set_flag(CPSR::Z, if output == 0 { true } else { false });
-        cpu.set_flag(CPSR::C, c)
+        execute_op(cpu, instruction, true, |op1, op2, shift_carry| {
+            let result = op1 & op2;
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
     }
 
     fn disassembly(&self, instruction: u32) -> String {
@@ -552,17 +587,15 @@ impl ArmInstruction for Tst {
 
 impl ArmInstruction for Teq {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        let fields = DataProcessingFields::parse(instruction);
-        let (op2, c) = fields.shifter.op2(cpu);
-
-        let output = cpu.get_reg(fields.rn) ^ op2;
-
-        let n_flag = output.bit(31);
-        let z_flag = if output == 0 { 1 } else { 0 };
-
-        cpu.set_flag(CPSR::N, n_flag == 1);
-        cpu.set_flag(CPSR::Z, z_flag == 1);
-        cpu.set_flag(CPSR::C, c)
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
+            let result = op1 ^ op2;
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
     }
 
     fn disassembly(&self, instruction: u32) -> String {
@@ -573,18 +606,16 @@ impl ArmInstruction for Teq {
 
 impl ArmInstruction for Cmp {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        let fields = DataProcessingFields::parse(instruction);
-        let (op2, _) = fields.shifter.op2(cpu);
+        execute_op(cpu, instruction, true, |op1, op2, _| {
+            let (result, borrow) = op1.overflowing_sub(op2);
 
-        let op1 = cpu.get_reg(fields.rn);
-        let (output, borrow) = op1.overflowing_sub(op2);
-
-        cpu.set_flag(CPSR::N, output.bit(31) == 1);
-        cpu.set_flag(CPSR::Z, output == 0);
-        cpu.set_flag(CPSR::C, !borrow);
-
-        let overflow = (op1.bit(31) != op2.bit(31)) && (op1.bit(31) != output.bit(31));
-        cpu.set_flag(CPSR::V, overflow);
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(!borrow),
+                v: Some(sub_overflows(op1, op2, result)),
+            })
+        });
     }
 
     fn disassembly(&self, instruction: u32) -> String {
@@ -593,9 +624,28 @@ impl ArmInstruction for Cmp {
     }
 }
 
+impl ArmInstruction for Cmn {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, true, |op1, op2, _| {
+            let (result, carry) = op1.overflowing_add(op2);
+            (result, FlagUpdates {
+                n: Some(result.bit(31) == 1),
+                z: Some(result == 0),
+                c: Some(carry),
+                v: Some(add_overflows(op1, op2, result)),
+            })
+        });
+    }
+
+    fn disassembly(&self, instruction: u32) -> String {
+        let fields = DataProcessingFields::parse(instruction);
+        format!("CMN r{}, {:?}", fields.rn, fields.shifter)
+    }
+}
+
 impl ArmInstruction for Orr {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 | op2;
             let n = result.bit(31) == 1;
             let z = result == 0;
@@ -618,25 +668,14 @@ impl ArmInstruction for Orr {
 
 impl ArmInstruction for Mov {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        let fields = DataProcessingFields::parse(instruction);
-        let (op2, c) = fields.shifter.op2(cpu);
-
-        cpu.set_reg(fields.rd, op2);
-        if fields.rd == 15 {
-            cpu.flush_pipeline();
-        }
-
-        if fields.set && fields.rd == 15 {
-            if cpu.mode_has_spsr() {
-                cpu.regs.cpsr = cpu.regs.spsr(&cpu.get_mode());
-            } else {
-                todo!("unpredictable")
-            }
-        } else if fields.set {
-            cpu.set_flag(CPSR::N, op2.bit(31) == 1);
-            cpu.set_flag(CPSR::Z, op2 == 0);
-            cpu.set_flag(CPSR::C, c);
-        }
+        execute_op(cpu, instruction, false, |_, op2, shift_carry| {
+            (op2, FlagUpdates {
+                n: Some(op2.bit(31) == 1),
+                z: Some(op2 == 0),
+                c: Some(shift_carry),
+                v: None,
+            })
+        });
     }
 
     fn disassembly(&self, instruction: u32) -> String {
@@ -646,8 +685,8 @@ impl ArmInstruction for Mov {
 }
 
 impl ArmInstruction for Bic {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |op1, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 & !op2;
             (result, FlagUpdates {
                 n: Some(result.bit(31) == 1),
@@ -665,8 +704,8 @@ impl ArmInstruction for Bic {
 }
 
 impl ArmInstruction for Mvn {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        execute_op(cpu, bus, instruction, |_, op2, shift_carry| {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        execute_op(cpu, instruction, false, |_, op2, shift_carry| {
             let result = !op2;
             (
                 result,
@@ -684,4 +723,12 @@ impl ArmInstruction for Mvn {
         let fields = DataProcessingFields::parse(instruction);
         format!("MVN r{}, {:?}", fields.rd, fields.shifter)
     }
+}
+
+fn add_overflows(op1: u32, op2: u32, result: u32) -> bool {
+    (op1.bit(31) == op2.bit(31)) && (op1.bit(31) != result.bit(31))
+}
+
+fn sub_overflows(op1: u32, op2: u32, result: u32) -> bool {
+    (op1.bit(31) != op2.bit(31)) && (op1.bit(31) != result.bit(31))
 }

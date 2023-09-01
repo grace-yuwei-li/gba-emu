@@ -10,7 +10,8 @@ use crate::utils::AddressableBits;
 
 use self::regs::Regs;
 
-enum State {
+#[derive(PartialEq, Eq)]
+pub enum State {
     ARM,
     Thumb,
 }
@@ -95,7 +96,7 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    fn get_state(&self) -> State {
+    pub fn get_state(&self) -> State {
         if self.get_cpsr_bits(CPSR::T) == 0 {
             State::ARM
         } else {
@@ -111,6 +112,7 @@ impl Cpu {
     }
 
     fn get_mode(&self) -> Mode {
+        // highest bit is always set to 1 - TODO: verify this claim
         match self.regs.cpsr.bits(0, 4) {
             0b10000 => Mode::User,
             0b10001 => Mode::FIQ,
@@ -133,7 +135,7 @@ impl Cpu {
             Mode::Undefined => 0b11011,
             Mode::System => 0b11111,
         };
-        self.regs.cpsr = val;
+        self.regs.cpsr = self.regs.cpsr.bits(5, 31) | val;
     }
 
     fn get_reg(&self, idx: u32) -> u32 {

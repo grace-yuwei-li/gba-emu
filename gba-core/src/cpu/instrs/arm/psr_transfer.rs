@@ -1,3 +1,5 @@
+use web_sys::console;
+
 use crate::{bus::Bus, cpu::Cpu, utils::AddressableBits};
 
 use super::{ArmInstruction, MetaInstr};
@@ -55,7 +57,7 @@ impl ArmInstruction for MRS {
 }
 
 impl ArmInstruction for MSR {
-    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         let unalloc_mask = 0x0fffff00;
         let user_mask = 0xf0000000;
         let priv_mask = 0x0000000f;
@@ -71,11 +73,7 @@ impl ArmInstruction for MSR {
         let byte_mask: u32 = (if field_mask.bit(0) == 1 { 0xff } else { 0 })
             | (if field_mask.bit(1) == 1 { 0xff00 } else { 0 })
             | (if field_mask.bit(2) == 1 { 0xff0000 } else { 0 })
-            | (if field_mask.bit(3) == 1 {
-                0xff000000
-            } else {
-                0
-            });
+            | (if field_mask.bit(3) == 1 { 0xff000000 } else { 0 });
 
         if !fields.r {
             let mask;
@@ -89,13 +87,13 @@ impl ArmInstruction for MSR {
             } else {
                 mask = byte_mask & user_mask;
             }
-            cpu.regs.cpsr = (cpu.regs.cpsr & !mask) | (fields.operand & mask);
+            cpu.regs.cpsr = (cpu.regs.cpsr & !mask) | (fields.operand & mask) | 0x10;
         } else {
             if cpu.mode_has_spsr() {
                 let mask = byte_mask & (user_mask | priv_mask | state_mask);
-                *cpu.regs.spsr_mut(&cpu.get_mode()) = (cpu.regs.spsr(&cpu.get_mode()) & !mask) | (fields.operand & mask);
+                *cpu.regs.spsr_mut(&cpu.get_mode()) = (cpu.regs.spsr(&cpu.get_mode()) & !mask) | (fields.operand & mask) | 0x10;
             } else {
-                todo!("unpredictable")
+                // Writes do nothing
             }
         }
     }
@@ -115,9 +113,9 @@ impl ArmInstruction for MSR {
             .join("");
 
         let operand = if instruction.bit(25) == 1 {
-            let rotate_imm = instruction.bits(8, 11);
-            let imm = instruction.bits(0, 7);
-            format!("#{}", imm.rotate_right(2 * rotate_imm))
+            let rotate_imm: u32 = instruction.bits(8, 11);
+            let imm: u32 = instruction.bits(0, 7);
+            format!("#{:x}", imm.rotate_right(2 * rotate_imm))
         } else {
             let rm = instruction.bits(0, 3);
             format!("r{}", rm)

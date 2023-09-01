@@ -56,6 +56,10 @@ export class GbaCore {
 */
   inspect_memory(): MemoryDetails;
 /**
+* @returns {boolean}
+*/
+  thumb_state(): boolean;
+/**
 */
   tick(): void;
 /**
@@ -146,6 +150,7 @@ export interface InitOutput {
   readonly gbacore_inspect_cpu: (a: number) => number;
   readonly gbacore_inspect_ppu: (a: number) => number;
   readonly gbacore_inspect_memory: (a: number) => number;
+  readonly gbacore_thumb_state: (a: number) => number;
   readonly gbacore_tick: (a: number) => void;
   readonly gbacore_load_test_rom: (a: number) => void;
   readonly gbacore_load_rom: (a: number, b: number, c: number) => void;

@@ -141,14 +141,11 @@ impl MetaInstr {
                 0b1000 => Box::new(data_processing::Tst),
                 0b1001 => Box::new(data_processing::Teq),
                 0b1010 => Box::new(data_processing::Cmp),
+                0b1011 => Box::new(data_processing::Cmn),
                 0b1100 => Box::new(data_processing::Orr),
                 0b1101 => Box::new(data_processing::Mov),
                 0b1110 => Box::new(data_processing::Bic),
                 0b1111 => Box::new(data_processing::Mvn),
-                0b0000..=0b1111 => Box::new(TodoInstruction::new_message(format!(
-                    "DataProcessing opcode: {:b}",
-                    instruction.bits(21, 24)
-                ))),
                 _ => unreachable!(),
             },
             Self::BlockDataTrans => Self::decode_block_data_transfer(instruction),

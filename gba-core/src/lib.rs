@@ -15,6 +15,7 @@ use bus::Bus;
 use cpu::Cpu;
 
 use crate::cpu::CpuDetails;
+use crate::cpu::State;
 
 #[wasm_bindgen]
 pub struct GbaCore {
@@ -57,6 +58,10 @@ impl GbaCore {
 
     pub fn inspect_memory(&self) -> bus::MemoryDetails {
         self.bus.inspect()
+    }
+
+    pub fn thumb_state(&self) -> bool {
+        self.cpu.get_state() == State::Thumb
     }
 
     pub fn tick(&mut self) {

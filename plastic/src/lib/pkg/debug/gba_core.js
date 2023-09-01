@@ -406,6 +406,13 @@ export class GbaCore {
         return MemoryDetails.__wrap(ret);
     }
     /**
+    * @returns {boolean}
+    */
+    thumb_state() {
+        const ret = wasm.gbacore_thumb_state(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
     */
     tick() {
         wasm.gbacore_tick(this.__wbg_ptr);

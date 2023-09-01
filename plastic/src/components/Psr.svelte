@@ -1,7 +1,7 @@
 <script lang="ts">
     export let value: number;
 
-    const breaks = [4, 24, 28];
+    const breaks = [4, 22, 27];
 
     const addNbsp = (input: string, breaks: number[]): string => {
         breaks.forEach((br, idx) => {
@@ -16,7 +16,7 @@
         return addNbsp(binary, breaks);
     }
 
-    const annotation = 'NZCVQ--J---------------EAIFTMode';
+    const annotation = 'NZCVQ--J--------------EAIFTMMMMM';
 </script>
 
 <span>{getFormattedValue()}</span><br>

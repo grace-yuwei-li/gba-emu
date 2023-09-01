@@ -3,13 +3,21 @@
 
     export let clockSpeed: number = 0;
 
-    const tick = () => {
+    const resume = () => {
         $gba?.enable_debugger(false);
         $gba?.set_stopped(false);
         $gba?.tick();
         $gba?.enable_debugger(true);
         $gba = $gba;
-        console.log($gba?.inspect_cpu().pc().toString(16));
+    }
+
+    const step = () => {
+        $gba?.enable_debugger(false);
+        $gba?.set_stopped(false);
+        $gba?.tick();
+        $gba?.set_stopped(true);
+        $gba?.enable_debugger(true);
+        $gba = $gba;
     }
 
     const handleReset = () => {
@@ -23,12 +31,14 @@
 
 <div id="toolbar" >
     <button on:click={handleReset}>Reset</button>
-    <button on:click={tick}>Tick</button>
+    <button on:click={resume}>Resume</button>
+    <button on:click={step}>Step</button>
     <label>
         Clock speed (hz):
         <input type="number" bind:value={clockSpeed} />
     </label>
     <span>PC: 0x{$gba?.inspect_cpu().pc().toString(16)}</span>
+    <span>Thumb: {$gba?.thumb_state()}</span>
 </div>
 
 <style>
