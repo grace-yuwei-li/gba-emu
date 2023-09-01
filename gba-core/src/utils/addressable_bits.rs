@@ -5,80 +5,39 @@ pub trait AddressableBits<T> {
     fn mut_bit(&mut self, index: usize, value: bool);
 }
 
-impl AddressableBits<u32> for u32 {
-    #[inline]
-    fn bit(&self, index: usize) -> u32 {
-        (self >> index) & 1
-    }
+macro_rules! addressable_bits_impl {
+    ($SelfT:ty) => {
+        impl AddressableBits<$SelfT> for $SelfT {
+            #[inline]
+            fn bit(&self, index: usize) -> $SelfT {
+                (self >> index) & 1
+            }
 
-    #[inline]
-    fn bits(&self, start: usize, end_inclusive: usize) -> u32 {
-        let len = end_inclusive - start + 1;
-        (self >> start) & ((1 << len) - 1)
-    }
+            #[inline]
+            fn bits(&self, start: usize, end_inclusive: usize) -> $SelfT {
+                let len = end_inclusive - start + 1;
+                (self >> start) & ((1 << len) - 1)
+            }
 
-    #[inline]
-    fn set_bit(self, index: usize, value: bool) -> u32 {
-        let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 }) << index
-    }
+            #[inline]
+            fn set_bit(self, index: usize, value: bool) -> $SelfT {
+                let mask = !(1 << index);
+                (self & mask) | (if value { 1 } else { 0 }) << index
+            }
 
-    #[inline]
-    fn mut_bit(&mut self, index: usize, value: bool) {
-        let mask = !(1 << index);
-        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
+            #[inline]
+            fn mut_bit(&mut self, index: usize, value: bool) {
+                let mask = !(1 << index);
+                *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
+            }
+        }
     }
 }
 
-impl AddressableBits<u16> for u16 {
-    #[inline]
-    fn bit(&self, index: usize) -> u16 {
-        (self >> index) & 1
-    }
-
-    #[inline]
-    fn bits(&self, start: usize, end_inclusive: usize) -> u16 {
-        let len = end_inclusive - start + 1;
-        (self >> start) & ((1 << len) - 1)
-    }
-
-    #[inline]
-    fn set_bit(self, index: usize, value: bool) -> u16 {
-        let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 }) << index
-    }
-
-    #[inline]
-    fn mut_bit(&mut self, index: usize, value: bool) {
-        let mask = !(1 << index);
-        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
-    }
-}
-
-impl AddressableBits<u8> for u8 {
-    #[inline]
-    fn bit(&self, index: usize) -> u8 {
-        (self >> index) & 1
-    }
-
-    #[inline]
-    fn bits(&self, start: usize, end_inclusive: usize) -> u8 {
-        let len = end_inclusive - start + 1;
-        (self >> start) & ((1 << len) - 1)
-    }
-
-    #[inline]
-    fn set_bit(self, index: usize, value: bool) -> u8 {
-        let mask = !(1 << index);
-        (self & mask) | (if value { 1 } else { 0 }) << index
-    }
-
-    #[inline]
-    fn mut_bit(&mut self, index: usize, value: bool) {
-        let mask = !(1 << index);
-        *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
-    }
-}
+addressable_bits_impl! { u64 }
+addressable_bits_impl! { u32 }
+addressable_bits_impl! { u16 }
+addressable_bits_impl! { u8 }
 
 #[cfg(test)]
 mod tests {

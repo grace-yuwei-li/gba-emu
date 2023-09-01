@@ -157,6 +157,7 @@ impl MetaInstr {
             Self::SingleDataTrans => Self::decode_single_data_transfer(instruction),
             Self::SoftwareInterrupt => Box::new(swi::Swi),
             Self::Multiply => multiply::decode_multiply(instruction),
+            Self::MultiplyLong => multiply::decode_multiply_long(instruction),
             _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
         }
     }
