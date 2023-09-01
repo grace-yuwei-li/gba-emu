@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     cpu::Cpu,
     ppu::Ppu,
-    utils::{get, get_u32, set, set_u32},
+    utils::{get, get_u32, set, set_u32, AddressableBits},
 };
 
 #[wasm_bindgen]
@@ -93,7 +93,9 @@ impl Bus {
     }
 
     pub fn read(&self, index: u32, cpu: &Cpu) -> u32 {
-        self.read_internal(index, cpu)
+        let aligned_index = index & 0xfffffffc;
+        let value: u32 = self.read_internal(aligned_index, cpu);
+        value.rotate_right(8 * index.bits(0, 1))
     }
 
     pub fn read_half(&self, index: u32, cpu: &Cpu) -> u16 {
@@ -132,7 +134,7 @@ impl Bus {
     }
 
     pub fn write(&mut self, index: u32, value: u32) {
-        self.write_internal(index, value);
+        self.write_internal(index & 0xfffffffc, value);
     }
 
     pub fn write_half(&mut self, index: u32, value: u16) {

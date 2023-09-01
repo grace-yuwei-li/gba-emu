@@ -8,7 +8,6 @@ use super::MetaInstr;
 
 struct STR;
 struct LDR;
-struct LDRB;
 
 #[derive(PartialEq, Eq)]
 enum AddressingModeSource {
@@ -72,6 +71,11 @@ struct AddressingMode {
     indexing: AddressingModeIndexing,
 }
 
+struct Address {
+    address: u32,
+    write_back: Option<u32>,
+}
+
 impl AddressingMode {
     pub fn decode(instruction: u32) -> Self {
         let i = instruction.bit(25) == 1;
@@ -112,23 +116,52 @@ impl AddressingMode {
         }
     }
 
-    pub fn address(&self, cpu: &Cpu) -> u32 {
+    /// Returns address and optionally the write-back address
+    pub fn address(&self, cpu: &Cpu) -> Address {
         match self.indexing {
-            AddressingModeIndexing::Offset | AddressingModeIndexing::PreIndexed => if self.source.u() {
-                cpu.get_reg(self.source.rn()).wrapping_add(self.source.offset(cpu))
+            AddressingModeIndexing::Offset => if self.source.u() {
+                let address = cpu.get_reg(self.source.rn()).wrapping_add(self.source.offset(cpu));
+                Address {
+                    address,
+                    write_back: None,
+                }
             } else {
-                cpu.get_reg(self.source.rn()).wrapping_sub(self.source.offset(cpu))
+                let address = cpu.get_reg(self.source.rn()).wrapping_sub(self.source.offset(cpu));
+                Address {
+                    address,
+                    write_back: None,
+                }
             },
-            AddressingModeIndexing::PostIndexed => cpu.get_reg(self.source.rn()),
+            AddressingModeIndexing::PreIndexed => if self.source.u() {
+                let address = cpu.get_reg(self.source.rn()).wrapping_add(self.source.offset(cpu));
+                Address {
+                    address,
+                    write_back: Some(address),
+                }
+            } else {
+                let address = cpu.get_reg(self.source.rn()).wrapping_sub(self.source.offset(cpu));
+                Address {
+                    address,
+                    write_back: Some(address),
+                }
+            },
+            AddressingModeIndexing::PostIndexed => {
+                let address = cpu.get_reg(self.source.rn());
+                if self.source.u() {
+                    Address {
+                        address, 
+                        write_back: Some(address.wrapping_add(self.source.offset(cpu)))
+                    }
+                } else {
+                    Address {
+                        address, 
+                        write_back: Some(address.wrapping_sub(self.source.offset(cpu)))
+                    }
+                }
+            }
         }
     }
 
-    pub fn write_back(&self) -> bool {
-        match self.indexing {
-            AddressingModeIndexing::Offset => false,
-            AddressingModeIndexing::PreIndexed | AddressingModeIndexing::PostIndexed => true,
-        }
-    }
 }
 
 impl std::fmt::Display for AddressingMode {
@@ -162,9 +195,9 @@ impl std::fmt::Display for AddressingMode {
         };
 
         match self.indexing {
-            AddressingModeIndexing::Offset => write!(f, "[{}, {}]", self.source.rn(), filler),
-            AddressingModeIndexing::PreIndexed => write!(f, "[{}, {}]!", self.source.rn(), filler),
-            AddressingModeIndexing::PostIndexed => write!(f, "[{}], {}", self.source.rn(), filler),
+            AddressingModeIndexing::Offset => write!(f, "[r{}, {}]", self.source.rn(), filler),
+            AddressingModeIndexing::PreIndexed => write!(f, "[r{}, {}]!", self.source.rn(), filler),
+            AddressingModeIndexing::PostIndexed => write!(f, "[r{}], {}", self.source.rn(), filler),
         }
     }
 }
@@ -174,16 +207,22 @@ impl ArmInstruction for STR {
         let b = instruction.bit(22);
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
+        let rd = if rd == 15 {
+            cpu.get_reg(rd) + 4
+        } else {
+            cpu.get_reg(rd)
+        };
         let addressing_mode = AddressingMode::decode(instruction);
 
-        let address = addressing_mode.address(cpu);
+        let Address { address, write_back } = addressing_mode.address(cpu);
 
         if b == 0 {
-            bus.write(address, cpu.get_reg(rd));
+            bus.write(address, rd);
         } else {
-            bus.write_byte(address, cpu.get_reg(rd) as u8);
+            bus.write_byte(address, rd as u8);
         }
-        if addressing_mode.write_back() {
+
+        if let Some(address) = write_back {
             cpu.set_reg(rn, address);
         }
     }
@@ -203,7 +242,7 @@ impl ArmInstruction for LDR {
         let rd = instruction.bits(12, 15);
         let addressing_mode = AddressingMode::decode(instruction);
 
-        let address = addressing_mode.address(cpu);
+        let Address { address, write_back } = addressing_mode.address(cpu);
 
         let val = if b == 0 {
             bus.read(address, cpu)
@@ -212,8 +251,11 @@ impl ArmInstruction for LDR {
         };
 
         cpu.set_reg(rd, val);
-        if addressing_mode.write_back() {
-            cpu.set_reg(rn, address);
+        if let Some(address) = write_back {
+            // Don't write back if rd == rn
+            if rd != rn {
+                cpu.set_reg(rn, address);
+            }
         }
 
         if rd == 15 {

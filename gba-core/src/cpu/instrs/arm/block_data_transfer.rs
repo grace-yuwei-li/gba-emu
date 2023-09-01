@@ -142,6 +142,10 @@ fn reg_list(instruction: u32) -> String {
         }
     }
 
+    if regs.is_empty() {
+        return "".to_string(); 
+    }
+
     let mut to_join: Vec<String> = vec![];
     let mut start: u8 = regs[0];
     let mut prev: u8 = regs[0];
