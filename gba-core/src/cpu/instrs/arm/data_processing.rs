@@ -1,4 +1,3 @@
-use crate::cpu::Mode;
 use crate::cpu::CPSR;
 use crate::utils::AddressableBits;
 use crate::Bus;

@@ -1,5 +1,3 @@
-use web_sys::console;
-
 use crate::{bus::Bus, cpu::Cpu, utils::AddressableBits};
 
 use super::{ArmInstruction, MetaInstr};

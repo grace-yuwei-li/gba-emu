@@ -1,13 +1,13 @@
 mod io_map;
 
 use io_map::IoMap;
-use num_traits::{AsPrimitive, FromBytes, FromPrimitive, ToBytes, ToPrimitive};
+use num_traits::{AsPrimitive, FromBytes, ToBytes};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     cpu::Cpu,
     ppu::Ppu,
-    utils::{get, get_u32, set, set_u32, AddressableBits},
+    utils::{get, get_u32, set, AddressableBits},
 };
 
 #[wasm_bindgen]

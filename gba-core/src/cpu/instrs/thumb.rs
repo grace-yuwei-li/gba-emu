@@ -301,7 +301,7 @@ impl Cpu {
         self.set_reg(rd.into(), value);
     }
 
-    fn move_shifted_register(&mut self, bus: &mut Bus, instruction: u16) {
+    fn move_shifted_register(&mut self, _: &mut Bus, instruction: u16) {
         let opcode = instruction.bits(11, 12);
         let imm = instruction.bits(6, 10);
         let rm = instruction.bits(3, 5);
@@ -381,7 +381,7 @@ impl Cpu {
         }
     }
 
-    fn add_subtract(&mut self, bus: &mut Bus, instruction: u16) {
+    fn add_subtract(&mut self, _: &mut Bus, instruction: u16) {
         let i = instruction.bit(10);
         let op = instruction.bit(9);
 
