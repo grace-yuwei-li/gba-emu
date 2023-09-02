@@ -17,7 +17,7 @@ impl ArmInstruction for Swp {
         cpu.set_reg(rd, temp);
     }
 
-    fn disassembly(&self, instruction: u32) -> String { 
+    fn disassembly(&self, instruction: u32) -> String {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
         let rm = instruction.bits(0, 3);
@@ -38,7 +38,7 @@ impl ArmInstruction for Swpb {
         cpu.set_reg(rd, temp.into());
     }
 
-    fn disassembly(&self, instruction: u32) -> String { 
+    fn disassembly(&self, instruction: u32) -> String {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
         let rm = instruction.bits(0, 3);

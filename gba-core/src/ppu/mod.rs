@@ -1,7 +1,10 @@
 mod utils;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{utils::{get_u32, set_u32, AddressableBits}, ppu::utils::bg_mode_3};
+use crate::{
+    ppu::utils::bg_mode_3,
+    utils::{get_u32, set_u32, AddressableBits},
+};
 
 use self::utils::bg_mode_4;
 

@@ -1,5 +1,5 @@
-use crate::cpu::CPSR;
 use crate::cpu::Mode;
+use crate::cpu::CPSR;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
@@ -172,7 +172,7 @@ impl ShifterOperand {
                             (
                                 rm_val >> imm,
                                 rm_val.bit((imm - 1).try_into().unwrap()) == 1,
-                                )
+                            )
                         }
                     }
                     ShiftSource::Register(reg) => {
@@ -239,11 +239,10 @@ impl ShifterOperand {
                 }
 
                 match shift_source {
-                    ShiftSource::Immediate(imm) => 
-                        (
-                            rm_val.rotate_right(imm),
-                            rm_val.bit((imm - 1).try_into().unwrap()) == 1,
-                        ),
+                    ShiftSource::Immediate(imm) => (
+                        rm_val.rotate_right(imm),
+                        rm_val.bit((imm - 1).try_into().unwrap()) == 1,
+                    ),
                     ShiftSource::Register(reg) => {
                         let rs = cpu.get_reg(reg);
                         if rs.bits(0, 7) == 0 {
@@ -251,7 +250,10 @@ impl ShifterOperand {
                         } else if rs.bits(0, 4) == 0 {
                             (rm_val, cpu.get_reg(rm).bit(31) == 1)
                         } else {
-                            (rm_val.rotate_right(rs.bits(0, 4)), cpu.get_reg(rm).bit((rs.bits(0, 4) - 1).try_into().unwrap()) == 1)
+                            (
+                                rm_val.rotate_right(rs.bits(0, 4)),
+                                cpu.get_reg(rm).bit((rs.bits(0, 4) - 1).try_into().unwrap()) == 1,
+                            )
                         }
                     }
                 }
@@ -378,12 +380,15 @@ impl ArmInstruction for And {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 & op2;
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 
@@ -397,12 +402,15 @@ impl ArmInstruction for Eor {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 ^ op2;
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 
@@ -494,12 +502,15 @@ impl ArmInstruction for Sbc {
                 overflow |= overflow2;
             }
 
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(!borrow),
-                v: Some(overflow),
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(!borrow),
+                    v: Some(overflow),
+                },
+            )
         });
     }
 
@@ -522,12 +533,15 @@ impl ArmInstruction for Rsc {
                 overflow |= overflow2;
             }
 
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(!borrow),
-                v: Some(overflow),
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(!borrow),
+                    v: Some(overflow),
+                },
+            )
         });
     }
 
@@ -551,12 +565,15 @@ impl ArmInstruction for Adc {
                 overflow |= overflow2;
             }
 
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(carry),
-                v: Some(overflow),
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(carry),
+                    v: Some(overflow),
+                },
+            )
         });
     }
 
@@ -570,12 +587,15 @@ impl ArmInstruction for Tst {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, true, |op1, op2, shift_carry| {
             let result = op1 & op2;
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 
@@ -589,12 +609,15 @@ impl ArmInstruction for Teq {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 ^ op2;
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 
@@ -609,12 +632,15 @@ impl ArmInstruction for Cmp {
         execute_op(cpu, instruction, true, |op1, op2, _| {
             let (result, borrow) = op1.overflowing_sub(op2);
 
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(!borrow),
-                v: Some(sub_overflows(op1, op2, result)),
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(!borrow),
+                    v: Some(sub_overflows(op1, op2, result)),
+                },
+            )
         });
     }
 
@@ -628,12 +654,15 @@ impl ArmInstruction for Cmn {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, true, |op1, op2, _| {
             let (result, carry) = op1.overflowing_add(op2);
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(carry),
-                v: Some(add_overflows(op1, op2, result)),
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(carry),
+                    v: Some(add_overflows(op1, op2, result)),
+                },
+            )
         });
     }
 
@@ -669,12 +698,15 @@ impl ArmInstruction for Orr {
 impl ArmInstruction for Mov {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |_, op2, shift_carry| {
-            (op2, FlagUpdates {
-                n: Some(op2.bit(31) == 1),
-                z: Some(op2 == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                op2,
+                FlagUpdates {
+                    n: Some(op2.bit(31) == 1),
+                    z: Some(op2 == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 
@@ -688,12 +720,15 @@ impl ArmInstruction for Bic {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
             let result = op1 & !op2;
-            (result, FlagUpdates {
-                n: Some(result.bit(31) == 1),
-                z: Some(result == 0),
-                c: Some(shift_carry),
-                v: None,
-            })
+            (
+                result,
+                FlagUpdates {
+                    n: Some(result.bit(31) == 1),
+                    z: Some(result == 0),
+                    c: Some(shift_carry),
+                    v: None,
+                },
+            )
         });
     }
 

@@ -1,6 +1,6 @@
 use super::ArmInstruction;
-use crate::cpu::{Cpu, Mode};
 use crate::bus::Bus;
+use crate::cpu::{Cpu, Mode};
 use crate::utils::AddressableBits;
 
 pub struct Swi;

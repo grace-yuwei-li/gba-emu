@@ -1,9 +1,9 @@
-mod regs;
 mod instrs;
+mod regs;
 
-use wasm_bindgen::JsValue;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
-use serde::{Serialize, Deserialize};
+use wasm_bindgen::JsValue;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
@@ -27,7 +27,6 @@ pub enum Mode {
     Undefined,
     Abort,
 }
-
 
 enum CPSR {
     M,
@@ -121,7 +120,10 @@ impl Cpu {
             0b10111 => Mode::Abort,
             0b11011 => Mode::Undefined,
             0b11111 => Mode::System,
-            _ => panic!("undefined behaviour, mode {:05b}", self.regs.cpsr.bits(0, 4)),
+            _ => panic!(
+                "undefined behaviour, mode {:05b}",
+                self.regs.cpsr.bits(0, 4)
+            ),
         }
     }
 

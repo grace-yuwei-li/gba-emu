@@ -1,6 +1,9 @@
 use crate::{bus::Bus, cpu::Cpu, utils::AddressableBits};
 
-use super::{ArmInstruction, MetaInstr, UnimplementedInstruction, single_data_transfer::{AddressingMode, Address}};
+use super::{
+    single_data_transfer::{Address, AddressingMode},
+    ArmInstruction, MetaInstr, UnimplementedInstruction,
+};
 
 struct LDRH;
 struct STRH;
@@ -11,7 +14,10 @@ impl ArmInstruction for LDRH {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
-        let Address { address, write_back } = AddressingMode::decode_halfword(instruction).address(cpu);
+        let Address {
+            address,
+            write_back,
+        } = AddressingMode::decode_halfword(instruction).address(cpu);
 
         let val = bus.read_half(address, cpu);
         cpu.set_reg(rd, val);
@@ -34,7 +40,10 @@ impl ArmInstruction for STRH {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
-        let Address { address, write_back } = AddressingMode::decode_halfword(instruction).address(cpu);
+        let Address {
+            address,
+            write_back,
+        } = AddressingMode::decode_halfword(instruction).address(cpu);
 
         bus.write_half(address, cpu.get_reg(rd) as u16);
 
@@ -54,7 +63,10 @@ impl ArmInstruction for LDRSB {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
-        let Address { address, write_back } = AddressingMode::decode_halfword(instruction).address(cpu);
+        let Address {
+            address,
+            write_back,
+        } = AddressingMode::decode_halfword(instruction).address(cpu);
 
         let val = bus.read_byte(address, cpu);
         cpu.set_reg(rd, i32::from(val as i8) as u32);
@@ -74,7 +86,10 @@ impl ArmInstruction for LDRSH {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
         let rn = instruction.bits(16, 19);
         let rd = instruction.bits(12, 15);
-        let Address { address, write_back } = AddressingMode::decode_halfword(instruction).address(cpu);
+        let Address {
+            address,
+            write_back,
+        } = AddressingMode::decode_halfword(instruction).address(cpu);
 
         // LDRSH has weird misaligned behaviour - it reads the value at the address as a byte and sign
         // extends to 32 bits

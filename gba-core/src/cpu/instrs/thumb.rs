@@ -313,10 +313,7 @@ impl Cpu {
                 if imm == 0 {
                     self.set_reg(rd.into(), self.get_reg(rm.into()));
                 } else {
-                    self.set_flag(
-                        CPSR::C,
-                        self.get_reg(rm.into()).bit(32 - imm as usize) == 1,
-                    );
+                    self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(32 - imm as usize) == 1);
                     self.set_reg(rd.into(), self.get_reg(rm.into()) << imm);
                 }
                 self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
@@ -328,10 +325,7 @@ impl Cpu {
                     self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(31) == 1);
                     self.set_reg(rd.into(), 0);
                 } else {
-                    self.set_flag(
-                        CPSR::C,
-                        self.get_reg(rm.into()).bit(imm as usize - 1) == 1,
-                    );
+                    self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(imm as usize - 1) == 1);
                     self.set_reg(rd.into(), self.get_reg(rm.into()) >> imm);
                 }
                 self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
@@ -347,14 +341,8 @@ impl Cpu {
                         self.set_reg(rd.into(), 0xffff_ffff);
                     }
                 } else {
-                    self.set_flag(
-                        CPSR::C,
-                        self.get_reg(rm.into()).bit(imm as usize - 1) == 1,
-                    );
-                    self.set_reg(
-                        rd.into(),
-                        ((self.get_reg(rm.into()) as i32) >> imm) as u32,
-                    );
+                    self.set_flag(CPSR::C, self.get_reg(rm.into()).bit(imm as usize - 1) == 1);
+                    self.set_reg(rd.into(), ((self.get_reg(rm.into()) as i32) >> imm) as u32);
                 }
                 self.set_flag(CPSR::N, self.get_reg(rd.into()).bit(31) == 1);
                 self.set_flag(CPSR::Z, self.get_reg(rd.into()) == 0);

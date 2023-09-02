@@ -71,11 +71,8 @@ impl Bus {
     {
         let index: usize = address.try_into().unwrap();
         match index {
-            0x0 ..= 0x3fff => get(&self.bios, index),
-            0x3000000..=0x3007fff => {
-                let index = index - 0x3000000;
-                get(&self.iw_ram, index)
-            }
+            0x0..=0x3fff => get(&self.bios, index),
+            0x3000000..=0x3ffffff => get(&self.iw_ram, index & 0x7fff),
             0x4000000..=0x4ffffff => match index & 0x3ff {
                 0..=0x5f => self.ppu.read_lcd_io_regs(index & 0x40003ff).as_(),
                 0x60..=0x3fe => self.io_map.read(index & 0x40003ff).as_(),
@@ -122,9 +119,8 @@ impl Bus {
     {
         let index: usize = index.try_into().unwrap();
         match index {
-            0x3000000..=0x3007fff => {
-                let index = index - 0x3000000;
-                set::<T, N>(&mut self.iw_ram, index, value);
+            0x3000000..=0x3ffffff => {
+                set::<T, N>(&mut self.iw_ram, index & 0x7fff, value);
             }
             0x4000000..=0x4ffffff => match index & 0x3ff {
                 0..=0x5f => self.ppu.write_lcd_io_regs(index & 0x40003ff, value.into()),

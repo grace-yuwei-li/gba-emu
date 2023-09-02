@@ -40,7 +40,7 @@ impl Regs {
             Mode::Abort if 13 <= reg && reg <= 14 => &mut self.abort[reg - 13],
             Mode::IRQ if 13 <= reg && reg <= 14 => &mut self.irq[reg - 13],
             Mode::Undefined if 13 <= reg && reg <= 14 => &mut self.undefined[reg - 13],
-            _ => &mut self.sys_user[reg]
+            _ => &mut self.sys_user[reg],
         }
     }
 

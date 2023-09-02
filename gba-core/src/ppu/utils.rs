@@ -48,4 +48,3 @@ fn decode_color(color: u16) -> [u8; 4] {
         255,
     ]
 }
-

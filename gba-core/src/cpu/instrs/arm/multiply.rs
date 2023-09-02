@@ -1,4 +1,4 @@
-use crate::{utils::AddressableBits, cpu::CPSR};
+use crate::{cpu::CPSR, utils::AddressableBits};
 
 use super::ArmInstruction;
 
@@ -48,7 +48,14 @@ impl ArmInstruction for Mla {
         let rn = instruction.bits(12, 15);
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
-        format!("MLA{} r{}, r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd, rm, rs, rn)
+        format!(
+            "MLA{} r{}, r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd,
+            rm,
+            rs,
+            rn
+        )
     }
 }
 
@@ -73,7 +80,13 @@ impl ArmInstruction for Mul {
         let rd = instruction.bits(16, 19);
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
-        format!("MUL{} r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd, rm, rs)
+        format!(
+            "MUL{} r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd,
+            rm,
+            rs
+        )
     }
 }
 
@@ -90,7 +103,10 @@ impl ArmInstruction for Umlal {
         let wide_result_hi: u32 = wide_result.bits(32, 63).try_into().unwrap();
 
         let (low, carry) = cpu.get_reg(rd_lo).overflowing_add(wide_result_lo);
-        let high = cpu.get_reg(rd_hi).wrapping_add(wide_result_hi).wrapping_add(if carry { 1 } else { 0 });
+        let high = cpu
+            .get_reg(rd_hi)
+            .wrapping_add(wide_result_hi)
+            .wrapping_add(if carry { 1 } else { 0 });
 
         cpu.set_reg(rd_lo, low);
         cpu.set_reg(rd_hi, high);
@@ -108,7 +124,14 @@ impl ArmInstruction for Umlal {
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
 
-        format!("UMLAL{} r{}, r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd_lo, rd_hi, rm, rs)
+        format!(
+            "UMLAL{} r{}, r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd_lo,
+            rd_hi,
+            rm,
+            rs
+        )
     }
 }
 
@@ -125,7 +148,10 @@ impl ArmInstruction for Smlal {
         let wide_result_hi: u32 = wide_result.bits(32, 63).try_into().unwrap();
 
         let (low, carry) = cpu.get_reg(rd_lo).overflowing_add(wide_result_lo);
-        let high = cpu.get_reg(rd_hi).wrapping_add(wide_result_hi).wrapping_add(if carry { 1 } else { 0 });
+        let high = cpu
+            .get_reg(rd_hi)
+            .wrapping_add(wide_result_hi)
+            .wrapping_add(if carry { 1 } else { 0 });
 
         cpu.set_reg(rd_lo, low);
         cpu.set_reg(rd_hi, high);
@@ -143,7 +169,14 @@ impl ArmInstruction for Smlal {
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
 
-        format!("SMLAL{} r{}, r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd_lo, rd_hi, rm, rs)
+        format!(
+            "SMLAL{} r{}, r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd_lo,
+            rd_hi,
+            rm,
+            rs
+        )
     }
 }
 
@@ -175,7 +208,14 @@ impl ArmInstruction for Umull {
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
 
-        format!("UMULL{} r{}, r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd_lo, rd_hi, rm, rs)
+        format!(
+            "UMULL{} r{}, r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd_lo,
+            rd_hi,
+            rm,
+            rs
+        )
     }
 }
 
@@ -207,6 +247,13 @@ impl ArmInstruction for Smull {
         let rs = instruction.bits(8, 11);
         let rm = instruction.bits(0, 3);
 
-        format!("SMULL{} r{}, r{}, r{}, r{}", if s == 1 { "S" } else { "" }, rd_lo, rd_hi, rm, rs)
+        format!(
+            "SMULL{} r{}, r{}, r{}, r{}",
+            if s == 1 { "S" } else { "" },
+            rd_lo,
+            rd_hi,
+            rm,
+            rs
+        )
     }
 }

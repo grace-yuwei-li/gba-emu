@@ -3,11 +3,11 @@ mod branch;
 mod branch_and_exchange;
 mod data_processing;
 mod halfword_transfer;
+mod multiply;
 mod psr_transfer;
+mod single_data_swap;
 mod single_data_transfer;
 mod swi;
-mod multiply;
-mod single_data_swap;
 
 use crate::bus::Bus;
 use crate::cpu::{Cpu, CPSR};
@@ -174,7 +174,11 @@ impl TodoInstruction {
 
 impl ArmInstruction for TodoInstruction {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, _: u32) {
-        todo!("TODO: {} at PC: {:x}", self.0, cpu.get_executing_instruction_pc())
+        todo!(
+            "TODO: {} at PC: {:x}",
+            self.0,
+            cpu.get_executing_instruction_pc()
+        )
     }
 
     fn disassembly(&self, _: u32) -> String {

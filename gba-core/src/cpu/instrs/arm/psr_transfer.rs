@@ -73,7 +73,11 @@ impl ArmInstruction for MSR {
         let byte_mask: u32 = (if field_mask.bit(0) == 1 { 0xff } else { 0 })
             | (if field_mask.bit(1) == 1 { 0xff00 } else { 0 })
             | (if field_mask.bit(2) == 1 { 0xff0000 } else { 0 })
-            | (if field_mask.bit(3) == 1 { 0xff000000 } else { 0 });
+            | (if field_mask.bit(3) == 1 {
+                0xff000000
+            } else {
+                0
+            });
 
         if !fields.r {
             let mask;
@@ -91,7 +95,8 @@ impl ArmInstruction for MSR {
         } else {
             if cpu.mode_has_spsr() {
                 let mask = byte_mask & (user_mask | priv_mask | state_mask);
-                *cpu.regs.spsr_mut(&cpu.get_mode()) = (cpu.regs.spsr(&cpu.get_mode()) & !mask) | (fields.operand & mask) | 0x10;
+                *cpu.regs.spsr_mut(&cpu.get_mode()) =
+                    (cpu.regs.spsr(&cpu.get_mode()) & !mask) | (fields.operand & mask) | 0x10;
             } else {
                 // Writes do nothing
             }
@@ -104,10 +109,12 @@ impl ArmInstruction for MSR {
         let fields = ["c", "x", "s", "f"]
             .into_iter()
             .enumerate()
-            .filter_map(|(i, f)| if field_mask.bit(i) == 1 {
-                Some(f.to_string())
-            } else {
-                None
+            .filter_map(|(i, f)| {
+                if field_mask.bit(i) == 1 {
+                    Some(f.to_string())
+                } else {
+                    None
+                }
             })
             .collect::<Vec<String>>()
             .join("");
@@ -120,7 +127,12 @@ impl ArmInstruction for MSR {
             let rm = instruction.bits(0, 3);
             format!("r{}", rm)
         };
-        format!("MSR {}_{}, {}", if r == 1 { "SPSR" } else { "CPSR" }, fields, operand)
+        format!(
+            "MSR {}_{}, {}",
+            if r == 1 { "SPSR" } else { "CPSR" },
+            fields,
+            operand
+        )
     }
 }
 

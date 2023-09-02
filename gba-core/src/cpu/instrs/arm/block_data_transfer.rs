@@ -1,149 +1,227 @@
-use crate::cpu::instrs::arm::TodoInstruction;
-use crate::cpu::State;
+use crate::cpu::Mode;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
 use tracing::error;
-use tracing::trace;
 
 use super::ArmInstruction;
 use super::MetaInstr;
 
-struct LDMFD;
-struct STMFD;
+struct Ldm(AddressingMode);
+struct Stm(AddressingMode);
 
-impl ArmInstruction for LDMFD {
+impl ArmInstruction for Ldm {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        let base_register = instruction.bits(16, 19);
+        let (start_address, write_back) = self.0.address(instruction, cpu);
 
-        let start_address = cpu.get_reg(base_register);
-        let mut address = start_address;
-        let mut reg_count = 0;
+        let rn = instruction.bits(16, 19);
+        let s = instruction.bit(22);
+        let mode = if s == 1 {
+            Mode::User
+        } else {
+            cpu.get_mode()
+        };
 
-        if base_register == 15 {
+        if rn == 15 {
             error!("UNPREDICTABLE");
         }
 
-        for i in 0..=14 {
-            if instruction.bit(i) == 1 {
-                reg_count += 1;
-                let value = bus.read(address, cpu);
-                cpu.set_reg(i.try_into().unwrap(), value);
-                address += 4;
+        if instruction.bits(0, 15) != 0 {
+            let mut address = start_address;
+            // Normal case
+            for i in 0..=14 {
+                if instruction.bit(i) == 1 {
+                    let value = bus.read(address & 0xfffffffc, cpu);
+                    *cpu.regs.get_mut(i.try_into().unwrap(), &mode) = value;
+                    address += 4;
+                }
             }
-        }
 
-        if instruction.bit(15) == 1 {
-            reg_count += 1;
+            if instruction.bit(15) == 1 {
+                // Write to PC
+                let value = bus.read(address, cpu);
+                cpu.set_reg(15, value & 0xffff_fffc);
+                cpu.flush_pipeline();
+            }
 
-            // Write to PC
-            let value = bus.read(address, cpu);
-            cpu.set_reg(15, value & 0xffff_fffe);
-
-            let state = if value & 1 == 0 {
-                State::ARM
-            } else {
-                State::Thumb
-            };
-            cpu.set_state(state);
-
-            // Flush after a write
+            if let Some(address) = write_back {
+                // Don't writeback if the base register is in the reg list
+                if instruction.bit(rn.try_into().unwrap()) == 0 {
+                    cpu.set_reg(rn, address);
+                }
+            }
+        } else {
+            // Empty register list loads value from memory into PC
+            let value = bus.read(start_address, cpu);
+            cpu.set_reg(15, value & 0xffff_fffc);
             cpu.flush_pipeline();
-
-            trace!("Set PC to {:x}", cpu.get_reg(15));
-        }
-
-        if instruction.bit(21) == 1 {
-            let new_val = cpu.get_reg(base_register) + 4 * reg_count;
-            cpu.set_reg(base_register, new_val);
+            if self.0.is_increment() {
+                cpu.set_reg(rn, cpu.get_reg(rn) + 0x40);
+            } else {
+                cpu.set_reg(rn, cpu.get_reg(rn) - 0x40);
+            }
         }
     }
 
     fn disassembly(&self, instruction: u32) -> String {
-        let base_register = instruction.bits(16, 19);
-        format!("LDMFD r{}, {{{}}}", base_register, reg_list(instruction))
+        let s = if instruction.bit(22) == 1 { "^" } else { "" };
+        let w = if instruction.bit(21) == 1 { "!" } else { "" };
+        let rn = instruction.bits(16, 19);
+        format!(
+            "LDM{} r{}{}, {{{}}}{}",
+            self.0,
+            rn,
+            w,
+            reg_list(instruction),
+            s
+        )
     }
 }
 
-impl ArmInstruction for STMFD {
+impl ArmInstruction for Stm {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u32) {
-        let base_register = instruction.bits(16, 19);
+        let (start_address, write_back) = self.0.address(instruction, cpu);
+        let rn = instruction.bits(16, 19);
 
-        let mut dest_address = cpu.get_reg(base_register) - 4;
-        let mut reg_count = 0;
+        let s = instruction.bit(22);
+        let mode = if s == 1 {
+            Mode::User
+        } else {
+            cpu.get_mode()
+        };
 
-        if base_register == 15 {
+        if rn == 15 {
             error!("UNPREDICTABLE");
         }
 
-        if instruction.bit(15) == 1 {
-            reg_count += 1;
-            todo!("IMPLEMENTATION DEFINED");
-        }
+        if instruction.bits(0, 15) != 0 {
+            // Normal case
+            let mut address = start_address;
+            let mut first_reg = true;
 
-        for i in (0..=14).rev() {
-            if instruction.bit(i) == 1 {
-                reg_count += 1;
-                bus.write(dest_address, cpu.get_reg(i.try_into().unwrap()));
-                dest_address -= 4;
+            for i in 0..=14 {
+                if instruction.bit(i) == 1 {
+                    bus.write(address, cpu.regs.get(i.try_into().unwrap(), &mode));
+                    address += 4;
+
+                    // Write back in STM happens after first register
+                    if first_reg {
+                        first_reg = false;
+                        if let Some(address) = write_back {
+                            cpu.set_reg(rn, address);
+                        }
+                    }
+                }
             }
-        }
 
-        if instruction.bit(21) == 1 {
-            let new_val = cpu.get_reg(base_register) - 4 * reg_count;
-            cpu.set_reg(base_register, new_val);
+            if instruction.bit(15) == 1 {
+                bus.write(address, cpu.get_reg(15) + 4);
+            }
+
+        } else {
+            // Empty register list stores PC
+            bus.write(start_address, cpu.get_reg(15) + 4);
+            if self.0.is_increment() {
+                cpu.set_reg(rn, cpu.get_reg(rn) + 0x40);
+            } else {
+                cpu.set_reg(rn, cpu.get_reg(rn) - 0x40);
+            }
         }
     }
 
     fn disassembly(&self, instruction: u32) -> String {
-        let base_register = instruction.bits(16, 19);
-        format!("STMFD r{}, {{{}}}", base_register, reg_list(instruction))
+        let s = if instruction.bit(22) == 1 { "^" } else { "" };
+        let w = if instruction.bit(21) == 1 { "!" } else { "" };
+        let rn = instruction.bits(16, 19);
+        format!(
+            "STM{} r{}{}, {{{}}}{}",
+            self.0,
+            rn,
+            w,
+            reg_list(instruction),
+            s
+        )
+    }
+}
+
+enum AddressingMode {
+    IncrementAfter,
+    IncrementBefore,
+    DecrementAfter,
+    DecrementBefore,
+}
+
+impl AddressingMode {
+    /// Returns address and an optional write-back address
+    fn address(&self, instruction: u32, cpu: &Cpu) -> (u32, Option<u32>) {
+        let rn = cpu.get_reg(instruction.bits(16, 19));
+        let reg_count = instruction.bits(0, 15).count_ones();
+        let (address, write_back) = match *self {
+            Self::IncrementAfter => (rn, rn + reg_count * 4),
+            Self::IncrementBefore => (rn + 4, rn + reg_count * 4),
+            Self::DecrementAfter => (rn - reg_count * 4 + 4, rn - reg_count * 4),
+            Self::DecrementBefore => (rn - reg_count * 4, rn - reg_count * 4),
+        };
+
+        // Check w bit
+        if instruction.bit(21) == 0 {
+            (address, None)
+        } else {
+            (address, Some(write_back))
+        }
+    }
+
+    fn is_increment(&self) -> bool {
+        match *self {
+            Self::IncrementAfter | Self::IncrementBefore => true,
+            _ => false,
+        }
+    }
+}
+
+impl std::fmt::Display for AddressingMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match *self {
+            Self::IncrementAfter => "IA",
+            Self::IncrementBefore => "IB",
+            Self::DecrementAfter => "DA",
+            Self::DecrementBefore => "DB",
+        };
+        write!(f, "{}", str)
     }
 }
 
 impl MetaInstr {
     pub(super) fn decode_block_data_transfer(instruction: u32) -> Box<dyn ArmInstruction> {
-        let base_register = instruction.bits(16, 19);
-        log::trace!(
-            "PUSWL: {:05b} REG: {}",
-            instruction.bits(20, 24),
-            base_register
-        );
+        let p = instruction.bit(24) == 1;
+        let u = instruction.bit(23) == 1;
+        let l = instruction.bit(20) == 1;
 
-        if instruction.bit(22) == 1 {
-            return Box::new(TodoInstruction::new_message(format!("user mode")));
-        }
+        let addressing_mode = match (p, u) {
+            (false, true) => AddressingMode::IncrementAfter,
+            (true, true) => AddressingMode::IncrementBefore,
+            (false, false) => AddressingMode::DecrementAfter,
+            (true, false) => AddressingMode::DecrementBefore,
+        };
 
-        let arg_pu = instruction.bits(23, 24);
-        let arg_s = instruction.bit(22);
-        let arg_l = instruction.bit(20);
-
-        if arg_s == 1 {
-            todo!("S bit behaviour not implemented");
-        }
-
-        match arg_pu << 1 | arg_l {
-            0b011 => Box::new(LDMFD),
-            0b100 => Box::new(STMFD),
-            0b000..=0b111 => Box::new(TodoInstruction::new_message(format!(
-                "block data transfer {:03b}",
-                arg_pu << 1 | arg_l
-            ))),
-            _ => unreachable!(),
+        if l {
+            Box::new(Ldm(addressing_mode))
+        } else {
+            Box::new(Stm(addressing_mode))
         }
     }
 }
 
 fn reg_list(instruction: u32) -> String {
     let mut regs: Vec<u8> = vec![];
-    for i in 0u8 ..= 15 {
+    for i in 0u8..=15 {
         if instruction.bit(i.into()) == 1 {
             regs.push(i);
         }
     }
 
     if regs.is_empty() {
-        return "".to_string(); 
+        return "".to_string();
     }
 
     let mut to_join: Vec<String> = vec![];

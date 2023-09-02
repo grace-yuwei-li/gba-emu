@@ -31,7 +31,7 @@ macro_rules! addressable_bits_impl {
                 *self = (*self & mask) | (if value { 1 } else { 0 }) << index;
             }
         }
-    }
+    };
 }
 
 addressable_bits_impl! { u64 }
