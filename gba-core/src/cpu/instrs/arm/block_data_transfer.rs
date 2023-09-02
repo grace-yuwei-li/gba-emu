@@ -120,11 +120,24 @@ impl ArmInstruction for Stm {
 
         } else {
             // Empty register list stores PC
-            bus.write(start_address, cpu.get_reg(15) + 4);
-            if self.0.is_increment() {
-                cpu.set_reg(rn, cpu.get_reg(rn) + 0x40);
+            let write_back = if self.0.is_increment() {
+                cpu.get_reg(rn) + 0x40
             } else {
-                cpu.set_reg(rn, cpu.get_reg(rn) - 0x40);
+                cpu.get_reg(rn) - 0x40
+            };
+            match self.0 {
+                AddressingMode::IncrementAfter | AddressingMode::IncrementBefore => {
+                    bus.write(start_address, cpu.get_reg(15) + 4);
+                    cpu.set_reg(rn, write_back);
+                },
+                AddressingMode::DecrementAfter => {
+                    bus.write(write_back + 4, cpu.get_reg(15) + 4);
+                    cpu.set_reg(rn, write_back);
+                }
+                AddressingMode::DecrementBefore => {
+                    bus.write(write_back, cpu.get_reg(15) + 4);
+                    cpu.set_reg(rn, write_back);
+                }
             }
         }
     }
