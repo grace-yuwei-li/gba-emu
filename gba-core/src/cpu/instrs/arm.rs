@@ -7,6 +7,7 @@ mod psr_transfer;
 mod single_data_transfer;
 mod swi;
 mod multiply;
+mod single_data_swap;
 
 use crate::bus::Bus;
 use crate::cpu::{Cpu, CPSR};
@@ -158,6 +159,7 @@ impl MetaInstr {
             Self::SoftwareInterrupt => Box::new(swi::Swi),
             Self::Multiply => multiply::decode_multiply(instruction),
             Self::MultiplyLong => multiply::decode_multiply_long(instruction),
+            Self::SingleDataSwap => single_data_swap::decode_swap(instruction),
             _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
         }
     }

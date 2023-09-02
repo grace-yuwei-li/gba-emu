@@ -126,7 +126,7 @@ impl MetaInstr {
             0b011 => Box::new(LDMFD),
             0b100 => Box::new(STMFD),
             0b000..=0b111 => Box::new(TodoInstruction::new_message(format!(
-                "{:03b}",
+                "block data transfer {:03b}",
                 arg_pu << 1 | arg_l
             ))),
             _ => unreachable!(),
