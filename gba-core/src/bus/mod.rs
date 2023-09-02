@@ -98,8 +98,17 @@ impl Bus {
         value.rotate_right(8 * index.bits(0, 1))
     }
 
-    pub fn read_half(&self, index: u32, cpu: &Cpu) -> u16 {
-        self.read_internal(index, cpu)
+    pub fn read_half(&self, index: u32, cpu: &Cpu) -> u32 {
+        let aligned_index = index & 0xfffffffe;
+        let value: u16 = self.read_internal(aligned_index, cpu);
+        u32::from(value).rotate_right(8 * index.bit(0))
+    }
+
+    pub fn read_signed_half(&self, index: u32, cpu: &Cpu) -> u32 {
+        let aligned_index = index & 0xfffffffe;
+        let value: u16 = self.read_internal(aligned_index, cpu);
+        let extended_value = i32::from(value as i16);
+        extended_value.rotate_right(8 * index.bit(0)) as u32
     }
 
     pub fn read_byte(&self, index: u32, cpu: &Cpu) -> u8 {
@@ -138,7 +147,7 @@ impl Bus {
     }
 
     pub fn write_half(&mut self, index: u32, value: u16) {
-        self.write_internal(index, value);
+        self.write_internal(index & 0xfffffffe, value);
     }
 
     pub fn write_byte(&mut self, index: u32, value: u8) {

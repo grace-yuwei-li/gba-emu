@@ -10,7 +10,7 @@ struct STR;
 struct LDR;
 
 #[derive(PartialEq, Eq)]
-enum AddressingModeSource {
+pub enum AddressingModeSource {
     Immediate {
         rn: u32,
         u: bool,
@@ -60,20 +60,20 @@ impl AddressingModeSource {
 }
 
 #[derive(PartialEq, Eq)]
-enum AddressingModeIndexing {
+pub enum AddressingModeIndexing {
     Offset,
     PreIndexed,
     PostIndexed,
 }
 
-struct AddressingMode {
+pub struct AddressingMode {
     source: AddressingModeSource,
     indexing: AddressingModeIndexing,
 }
 
-struct Address {
-    address: u32,
-    write_back: Option<u32>,
+pub struct Address {
+    pub address: u32,
+    pub write_back: Option<u32>,
 }
 
 impl AddressingMode {
@@ -99,6 +99,44 @@ impl AddressingMode {
                     shift_imm: instruction.bits(7, 11),
                 }
             },
+        };
+
+        let indexing = match (p, w) {
+            (true, false) => AddressingModeIndexing::Offset,
+            (true, true) => AddressingModeIndexing::PreIndexed,
+            (false, false) => AddressingModeIndexing::PostIndexed,
+            // Not sure what happens if p false and w true, none of
+            // the 9 addressing modes seem to correspond to this case.
+            (false, true) => AddressingModeIndexing::PostIndexed,
+        };
+
+        Self {
+            source,
+            indexing,
+        }
+    }
+
+    pub fn decode_halfword(instruction: u32) -> Self {
+        let p = instruction.bit(24) == 1;
+        let u = instruction.bit(23) == 1;
+        let i = instruction.bit(22) == 1;
+        let w = instruction.bit(21) == 1;
+        let rn = instruction.bits(16, 19);
+
+        let source = if i {
+            AddressingModeSource::Immediate {
+                u,
+                rn,
+                offset: instruction.bits(0, 3) | (instruction.bits(8, 11) << 4),
+            }
+        } else {
+            AddressingModeSource::Register { 
+                rn, 
+                u, 
+                rm: instruction.bits(0, 3),
+                shift: 0,
+                shift_imm: 0,
+            }
         };
 
         let indexing = match (p, w) {

@@ -491,7 +491,7 @@ impl Cpu {
             (0, 1) => {
                 let address = self.get_reg(rb.into()) + self.get_reg(ro.into());
                 let data = bus.read_half(address, self);
-                self.set_reg(rd.into(), data as u32);
+                self.set_reg(rd.into(), data);
             }
             _ => todo!("H:{} S:{}", h_flag, sign_extend),
         }

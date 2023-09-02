@@ -85,7 +85,7 @@ impl Ppu {
         match self.bg_mode() {
             3 => bg_mode_3(&self.vram[0..240 * 160 * 2]),
             4 => bg_mode_4(&self.vram[0..240 * 160]),
-            _ => vec![0; 240 * 160 * 4],
+            _ => vec![255; 240 * 160 * 4],
         }
     }
 
