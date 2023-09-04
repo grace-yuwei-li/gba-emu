@@ -80,7 +80,7 @@ impl GbaCore {
     }
 
     pub fn load_test_rom(&mut self) {
-        let bytes = include_bytes!("../tests/roms/arm.gba");
+        let bytes = include_bytes!("../tests/roms/thumb.gba");
         //let bytes = include_bytes!("../tests/roms/panda.gba");
         self.load_rom(bytes);
     }

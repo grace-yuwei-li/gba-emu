@@ -16,11 +16,7 @@ impl ArmInstruction for Ldm {
 
         let rn = instruction.bits(16, 19);
         let s = instruction.bit(22);
-        let mode = if s == 1 {
-            Mode::User
-        } else {
-            cpu.get_mode()
-        };
+        let mode = if s == 1 { Mode::User } else { cpu.get_mode() };
 
         if rn == 15 {
             error!("UNPREDICTABLE");
@@ -84,11 +80,7 @@ impl ArmInstruction for Stm {
         let rn = instruction.bits(16, 19);
 
         let s = instruction.bit(22);
-        let mode = if s == 1 {
-            Mode::User
-        } else {
-            cpu.get_mode()
-        };
+        let mode = if s == 1 { Mode::User } else { cpu.get_mode() };
 
         if rn == 15 {
             error!("UNPREDICTABLE");
@@ -117,7 +109,6 @@ impl ArmInstruction for Stm {
             if instruction.bit(15) == 1 {
                 bus.write(address, cpu.get_reg(15) + 4);
             }
-
         } else {
             // Empty register list stores PC
             let write_back = if self.0.is_increment() {
@@ -129,7 +120,7 @@ impl ArmInstruction for Stm {
                 AddressingMode::IncrementAfter | AddressingMode::IncrementBefore => {
                     bus.write(start_address, cpu.get_reg(15) + 4);
                     cpu.set_reg(rn, write_back);
-                },
+                }
                 AddressingMode::DecrementAfter => {
                     bus.write(write_back + 4, cpu.get_reg(15) + 4);
                     cpu.set_reg(rn, write_back);

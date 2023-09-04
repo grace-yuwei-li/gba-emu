@@ -1,30 +1,29 @@
 <script lang="ts">
-    import { gba, reset } from '$lib/gbaStore';
+    import { gba, reset, tick } from '$lib/gbaStore';
 
     export let clockSpeed: number = 0;
 
     const resume = () => {
-        $gba?.enable_debugger(false);
-        $gba?.set_stopped(false);
-        $gba?.tick();
-        $gba?.enable_debugger(true);
-        $gba = $gba;
+        $gba?.gba.enable_debugger(false);
+        $gba?.gba.set_stopped(false);
+        tick(1);
+        $gba?.gba.enable_debugger(true);
     }
 
     const step = () => {
-        $gba?.enable_debugger(false);
-        $gba?.set_stopped(false);
-        $gba?.tick();
-        $gba?.set_stopped(true);
-        $gba?.enable_debugger(true);
+        $gba?.gba.enable_debugger(false);
+        $gba?.gba.set_stopped(false);
+        tick(1);
+        $gba?.gba.set_stopped(true);
+        $gba?.gba.enable_debugger(true);
         $gba = $gba;
     }
 
     const handleReset = () => {
-        let breakpoints = Array.from($gba?.breakpoints() ?? []);
+        let breakpoints = Array.from($gba?.gba.breakpoints() ?? []);
         reset();
         for (const bp of breakpoints) {
-            $gba?.add_breakpoint(bp);
+            $gba?.gba.add_breakpoint(bp);
         }
     }
 </script>
@@ -37,8 +36,8 @@
         Clock speed (hz):
         <input type="number" bind:value={clockSpeed} />
     </label>
-    <span>PC: 0x{$gba?.inspect_cpu().pc().toString(16)}</span>
-    <span>Thumb: {$gba?.thumb_state()}</span>
+    <span>PC: 0x{$gba?.cpu.pc().toString(16)}</span>
+    <span>Thumb: {$gba?.gba.thumb_state()}</span>
 </div>
 
 <style>

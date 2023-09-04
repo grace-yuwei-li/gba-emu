@@ -160,7 +160,12 @@ impl MetaInstr {
             Self::Multiply => multiply::decode_multiply(instruction),
             Self::MultiplyLong => multiply::decode_multiply_long(instruction),
             Self::SingleDataSwap => single_data_swap::decode_swap(instruction),
-            _ => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
+
+            // TODO
+            Self::CoprocDataOp => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
+            Self::CoprocRegTrans => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
+            Self::CoprocDataTrans => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
+            Self::Undefined => Box::new(TodoInstruction::new_message(format!("{:?}", self))),
         }
     }
 }
@@ -245,7 +250,7 @@ impl Cpu {
             0b1100 => "GT",
             0b1101 => "LE",
             0b1110 => "",
-            0b1111 => unimplemented!(),
+            0b1111 => "Unpredictable COND",
             _ => unreachable!(),
         }
     }

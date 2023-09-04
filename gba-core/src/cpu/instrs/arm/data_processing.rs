@@ -1,4 +1,6 @@
 use crate::cpu::CPSR;
+use crate::utils::add_overflows;
+use crate::utils::sub_overflows;
 use crate::utils::AddressableBits;
 use crate::Bus;
 use crate::Cpu;
@@ -757,12 +759,4 @@ impl ArmInstruction for Mvn {
         let fields = DataProcessingFields::parse(instruction);
         format!("MVN r{}, {:?}", fields.rd, fields.shifter)
     }
-}
-
-fn add_overflows(op1: u32, op2: u32, result: u32) -> bool {
-    (op1.bit(31) == op2.bit(31)) && (op1.bit(31) != result.bit(31))
-}
-
-fn sub_overflows(op1: u32, op2: u32, result: u32) -> bool {
-    (op1.bit(31) != op2.bit(31)) && (op1.bit(31) != result.bit(31))
 }

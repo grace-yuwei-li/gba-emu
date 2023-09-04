@@ -12,7 +12,7 @@
 		FIQ = 'FIQ'
 	}
 
-	$: cpuDetails = $gba?.inspect_cpu();
+	$: cpuDetails = $gba?.cpu;
 
 	$: getReg = (index: number, mode: Mode) => {
 		return cpuDetails?.reg(index, { type: mode });

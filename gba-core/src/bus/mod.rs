@@ -72,6 +72,7 @@ impl Bus {
         let index: usize = address.try_into().unwrap();
         match index {
             0x0..=0x3fff => get(&self.bios, index),
+            0x2000000..=0x2ffffff => get(&self.ew_ram, index & 0x3ffff),
             0x3000000..=0x3ffffff => get(&self.iw_ram, index & 0x7fff),
             0x4000000..=0x4ffffff => match index & 0x3ff {
                 0..=0x5f => self.ppu.read_lcd_io_regs(index & 0x40003ff).as_(),
@@ -119,9 +120,8 @@ impl Bus {
     {
         let index: usize = index.try_into().unwrap();
         match index {
-            0x3000000..=0x3ffffff => {
-                set::<T, N>(&mut self.iw_ram, index & 0x7fff, value);
-            }
+            0x2000000..=0x2ffffff => set(&mut self.ew_ram, index & 0x3ffff, value),
+            0x3000000..=0x3ffffff => set(&mut self.iw_ram, index & 0x7fff, value),
             0x4000000..=0x4ffffff => match index & 0x3ff {
                 0..=0x5f => self.ppu.write_lcd_io_regs(index & 0x40003ff, value.into()),
                 0x60..=0x3fe => self.io_map.write(index & 0x40003ff, value.into()),
@@ -131,7 +131,7 @@ impl Bus {
             0x5000000..=0x7ffffff => self.ppu.write_simple(index, value.into()),
             0x8000000..=0x9ffffff => {
                 let index = index - 0x8000000;
-                set::<T, N>(&mut self.game_pak_rom, index, value);
+                set(&mut self.game_pak_rom, index, value);
             }
             0x1000_0000..=0xffff_ffff => {}
             _ => todo!("index {:#x} not implemented", index),

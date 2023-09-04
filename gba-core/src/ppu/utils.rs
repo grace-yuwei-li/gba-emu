@@ -26,16 +26,6 @@ pub fn bg_mode_4(input: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-fn decode_byte(byte: u8) -> Vec<u8> {
-    (0..8)
-        .into_iter()
-        .flat_map(|i| {
-            let bit = byte.bit(i);
-            [255 * bit, 255 * bit, 255 * bit, 255]
-        })
-        .collect()
-}
-
 fn decode_color(color: u16) -> [u8; 4] {
     let red = color.bits(0, 4) as u8;
     let green = color.bits(5, 9) as u8;

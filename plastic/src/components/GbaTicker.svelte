@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { gba, init } from '$lib/gbaStore';
-	import { onDestroy, onMount } from 'svelte';
+	import { gba, init, tick } from '$lib/gbaStore';
+	import { onMount } from 'svelte';
 
     export let clockSpeed: number;
 
@@ -14,16 +14,12 @@
 
         const numTicks = Math.ceil(clockSpeed * elapsedMillis / 1000);
 
-        for (let i = 0; i < numTicks; i++) {
-            $gba?.tick();
-        }
-        $gba = $gba;
+        tick(numTicks);
 
         start = timestamp;
 
         requestAnimationFrame(tickGba);
     }
-
 
 	onMount(async () => {
         await init();
@@ -31,12 +27,6 @@
         requestAnimationFrame(tickGba);
 
         console.log('mounted');
+        console.log($gba);
 	});
-
-    onDestroy(() => {
-        $gba?.free();
-        $gba = undefined;
-        
-        console.log('destroyed');
-    });
 </script>

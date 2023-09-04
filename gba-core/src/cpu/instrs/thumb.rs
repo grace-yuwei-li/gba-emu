@@ -4,8 +4,13 @@ use crate::{
     bus::Bus,
     cpu::{Cpu, CPSR},
     logging::Targets,
-    utils::AddressableBits,
+    utils::{add_overflows, sub_overflows, AddressableBits},
 };
+
+pub trait ThumbInstruction {
+    fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u16);
+    fn disassembly(&self, instruction: u16) -> String;
+}
 
 type InstructionFpThumb = fn(&mut Cpu, &mut Bus, u16);
 
@@ -40,49 +45,31 @@ impl ThumbInstr {
     fn matches(&self, instruction: u16) -> bool {
         match *self {
             ThumbInstr::SoftwareInterrupt => {
-                let format = 0b1101_1111_0000_0000;
-                let mask = 0b1111_1111_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1101_1111_0000_0000, 0b1111_1111_0000_0000)
             }
             ThumbInstr::Branch => {
-                let format = 0b1110_0000_0000_0000;
-                let mask = 0b1111_1000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1110_0000_0000_0000, 0b1111_1000_0000_0000)
             }
             ThumbInstr::ConditionalBranch => {
-                let format = 0b1101_0000_0000_0000;
-                let mask = 0b1111_0000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1101_0000_0000_0000, 0b1111_0000_0000_0000)
             }
             ThumbInstr::MultipleLoadStore => {
-                let format = 0b1100_0000_0000_0000;
-                let mask = 0b1111_0000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1100_0000_0000_0000, 0b1111_0000_0000_0000)
             }
             ThumbInstr::LongBranchWithLink => {
-                let format = 0b1111_0000_0000_0000;
-                let mask = 0b1111_0000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1111_0000_0000_0000, 0b1111_0000_0000_0000)
             }
             ThumbInstr::AddOffsetToStackPointer => {
-                let format = 0b1011_0000_0000_0000;
-                let mask = 0b1111_1111_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1011_0000_0000_0000, 0b1111_1111_0000_0000)
             }
             ThumbInstr::PushPopRegisters => {
-                let format = 0b1011_0100_0000_0000;
-                let mask = 0b1111_0110_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1011_0100_0000_0000, 0b1111_0110_0000_0000)
             }
             ThumbInstr::LoadStoreHalfword => {
-                let format = 0b1000_0000_0000_0000;
-                let mask = 0b1111_0000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1000_0000_0000_0000, 0b1111_0000_0000_0000)
             }
             ThumbInstr::SpRelativeLoadStore => {
-                let format = 0b1001_0000_0000_0000;
-                let mask = 0b1111_0000_0000_0000;
-                instruction & mask == format
+                format_mask(instruction, 0b1001_0000_0000_0000, 0b1111_0000_0000_0000)
             }
             ThumbInstr::LoadAddress => {
                 format_mask(instruction, 0b1010_0000_0000_0000, 0b1111_0000_0000_0000)
@@ -216,26 +203,38 @@ impl Cpu {
     }
 
     fn thumb_mov_imm(&mut self, _: &mut Bus, instruction: u16) {
-        let rd = instruction.bits(8, 10);
+        let rn = instruction.bits(8, 10);
         let imm = instruction.bits(0, 7);
 
-        trace!(target: Targets::Thumb.value(), "MOV r{}, {:#x}", rd, imm);
-
-        self.set_reg(rd.into(), imm as u32);
+        self.set_reg(rn.into(), imm as u32);
 
         self.set_flag(CPSR::N, false);
         self.set_flag(CPSR::Z, if imm == 0 { true } else { false });
     }
 
-    fn thumb_add_imm(&mut self, _: &mut Bus, instruction: u16) {
-        let rd = instruction.bits(8, 10);
+    fn thumb_cmp_imm(&mut self, _: &mut Bus, instruction: u16) {
+        let rn = instruction.bits(8, 10);
+        let rn_val = self.get_reg(rn.into());
         let imm = instruction.bits(0, 7) as u32;
 
-        let (result, carry) = self.get_reg(rd.into()).overflowing_add(imm);
-        let overflow = self.get_reg(rd.into()).bit(31) == imm.bit(31)
-            && self.get_reg(rd.into()).bit(31) != result.bit(31);
+        let (result, borrow) = rn_val.overflowing_sub(imm);
+        let overflow = sub_overflows(rn_val, imm, result);
 
-        self.set_reg(rd.into(), result);
+        self.set_flag(CPSR::N, result.bit(31) == 1);
+        self.set_flag(CPSR::Z, result == 0);
+        self.set_flag(CPSR::C, !borrow);
+        self.set_flag(CPSR::V, overflow);
+    }
+
+    fn thumb_add_imm(&mut self, _: &mut Bus, instruction: u16) {
+        let rn = instruction.bits(8, 10);
+        let rn_val = self.get_reg(rn.into());
+        let imm = instruction.bits(0, 7) as u32;
+
+        let (result, carry) = rn_val.overflowing_add(imm);
+        let overflow = add_overflows(rn_val, imm, result);
+
+        self.set_reg(rn.into(), result);
         self.set_flag(CPSR::N, result.bit(31) == 1);
         self.set_flag(CPSR::Z, result == 0);
         self.set_flag(CPSR::C, carry);
@@ -243,17 +242,17 @@ impl Cpu {
     }
 
     fn thumb_sub_imm(&mut self, _: &mut Bus, instruction: u16) {
-        let rd = instruction.bits(8, 10);
+        let rn = instruction.bits(8, 10);
+        let rn_val = self.get_reg(rn.into());
         let imm = instruction.bits(0, 7) as u32;
 
-        let (result, carry) = self.get_reg(rd.into()).overflowing_sub(imm);
-        let overflow = self.get_reg(rd.into()).bit(31) != imm.bit(31)
-            && self.get_reg(rd.into()).bit(31) != result.bit(31);
+        let (result, borrow) = rn_val.overflowing_sub(imm);
+        let overflow = sub_overflows(rn_val, imm, result);
 
-        self.set_reg(rd.into(), result);
+        self.set_reg(rn.into(), result);
         self.set_flag(CPSR::N, result.bit(31) == 1);
         self.set_flag(CPSR::Z, result == 0);
-        self.set_flag(CPSR::C, !carry);
+        self.set_flag(CPSR::C, !borrow);
         self.set_flag(CPSR::V, overflow);
     }
 
@@ -261,9 +260,9 @@ impl Cpu {
         let opcode = instruction.bits(11, 12);
         match opcode {
             0b00 => self.thumb_mov_imm(bus, instruction),
+            0b01 => self.thumb_cmp_imm(bus, instruction),
             0b10 => self.thumb_add_imm(bus, instruction),
             0b11 => self.thumb_sub_imm(bus, instruction),
-            0b01..=0b11 => todo!("{:02b}", opcode),
             _ => unreachable!(),
         }
     }
@@ -424,17 +423,249 @@ impl Cpu {
 
     fn alu_operations(&mut self, _: &mut Bus, instruction: u16) {
         let opcode = instruction.bits(6, 9);
-        let rs = instruction.bits(3, 5);
-        let rd = instruction.bits(0, 2);
+        let rs: u32 = instruction.bits(3, 5).into();
+        let rd: u32 = instruction.bits(0, 2).into();
 
         match opcode {
-            0b1110 => {
-                let result = self.get_reg(rd.into()) & !self.get_reg(rs.into());
-                self.set_reg(rd.into(), result);
+            0b0000 => {
+                // AND
+                let result = self.get_reg(rd) & self.get_reg(rs);
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
                 self.set_flag(CPSR::N, result.bit(31) == 1);
                 self.set_flag(CPSR::Z, result == 0);
             }
-            0b0000..=0b1111 => todo!("alu operation {:04b}", opcode),
+            0b0001 => {
+                // EOR
+                let result = self.get_reg(rd) ^ self.get_reg(rs);
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b0010 => {
+                // LSL
+                let rs_low = self.get_reg(rs).bits(0, 7);
+                let result;
+                if rs_low == 0 {
+                    // Nothing
+                    result = self.get_reg(rd);
+                } else if rs_low < 32 {
+                    let carry = self.get_reg(rd).bit((32 - rs_low).try_into().unwrap()) == 1;
+                    self.set_flag(CPSR::C, carry);
+                    result = self.get_reg(rd) << rs_low;
+                } else if rs_low == 32 {
+                    self.set_flag(CPSR::C, self.get_reg(rd).bit(0) == 1);
+                    result = 0;
+                } else {
+                    self.set_flag(CPSR::C, false);
+                    result = 0;
+                }
+
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b0011 => {
+                // LSR
+                let rs_low = self.get_reg(rs).bits(0, 7);
+                let result;
+                if rs_low == 0 {
+                    // Nothing
+                    result = self.get_reg(rd);
+                } else if rs_low < 32 {
+                    let carry = self.get_reg(rd).bit((rs_low - 1).try_into().unwrap()) == 1;
+                    self.set_flag(CPSR::C, carry);
+                    result = self.get_reg(rd) >> rs_low;
+                } else if rs_low == 32 {
+                    self.set_flag(CPSR::C, self.get_reg(rd).bit(31) == 1);
+                    result = 0;
+                } else {
+                    self.set_flag(CPSR::C, false);
+                    result = 0;
+                }
+
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b0100 => {
+                // ASR
+                let rs_low = self.get_reg(rs).bits(0, 7);
+                let result;
+                if rs_low == 0 {
+                    // Nothing
+                    result = self.get_reg(rd);
+                } else if rs_low < 32 {
+                    let carry = self.get_reg(rd).bit((rs_low - 1).try_into().unwrap()) == 1;
+                    self.set_flag(CPSR::C, carry);
+                    result = ((self.get_reg(rd) as i32) >> rs_low) as u32;
+                } else {
+                    self.set_flag(CPSR::C, self.get_reg(rd).bit(31) == 1);
+                    result = if self.get_reg(rd).bit(31) == 0 {
+                        0
+                    } else {
+                        0xffffffff
+                    }
+                }
+
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b0101 => {
+                // ADC
+                let rd_val = self.get_reg(rd);
+                let rs_val = self.get_reg(rs);
+                let c = self.get_cpsr_bits(CPSR::C);
+                let (result1, carry1) = rd_val.overflowing_add(rs_val);
+                let (result2, carry2) = result1.overflowing_add(c);
+
+                self.set_reg(rd, result2);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result2.bit(31) == 1);
+                self.set_flag(CPSR::Z, result2 == 0);
+                self.set_flag(CPSR::C, carry1 | carry2);
+                self.set_flag(
+                    CPSR::V,
+                    add_overflows(rd_val, rs_val, result1) | add_overflows(result1, c, result2),
+                );
+            }
+            0b0110 => {
+                // SBC
+                let rd_val = self.get_reg(rd);
+                let rs_val = self.get_reg(rs);
+                let not_c = 1 - self.get_cpsr_bits(CPSR::C);
+                let (result1, borrow1) = rd_val.overflowing_sub(rs_val);
+                let (result2, borrow2) = result1.overflowing_sub(not_c);
+
+                self.set_reg(rd, result2);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result2.bit(31) == 1);
+                self.set_flag(CPSR::Z, result2 == 0);
+                self.set_flag(CPSR::C, !(borrow1 | borrow2));
+                self.set_flag(
+                    CPSR::V,
+                    sub_overflows(rd_val, rs_val, result1) | sub_overflows(result1, not_c, result2),
+                );
+            }
+            0b0111 => {
+                // ROR
+                let rd_val = self.get_reg(rd);
+                let rs_low = self.get_reg(rs).bits(0, 7);
+                let rs_lower = self.get_reg(rs).bits(0, 4);
+                let result;
+                if rs_low == 0 {
+                    // Nothing
+                    result = rd_val;
+                } else if rs_lower == 0 {
+                    let carry = rd_val.bit(31) == 1;
+                    self.set_flag(CPSR::C, carry);
+                    result = rd_val;
+                } else {
+                    self.set_flag(CPSR::C, rd_val.bit((rs_lower - 1).try_into().unwrap()) == 1);
+                    result = rd_val.rotate_right(rs_lower);
+                }
+
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b1000 => {
+                // TST
+                let result = self.get_reg(rd) & self.get_reg(rs);
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b1001 => {
+                // CMP
+                let (result, borrow) = self.get_reg(0).overflowing_sub(self.get_reg(rs));
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+                self.set_flag(CPSR::C, !borrow);
+                self.set_flag(CPSR::V, sub_overflows(0, rs, result));
+            }
+            0b1010 => {
+                // CMP
+                let (result, borrow) = self.get_reg(rd).overflowing_sub(self.get_reg(rs));
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+                self.set_flag(CPSR::C, !borrow);
+                self.set_flag(CPSR::V, sub_overflows(rd, rs, result));
+            }
+            0b1011 => {
+                // CMN
+                let (result, carry) = self.get_reg(rd).overflowing_add(self.get_reg(rs));
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+                self.set_flag(CPSR::C, carry);
+                self.set_flag(CPSR::V, add_overflows(rd, rs, result));
+            }
+            0b1100 => {
+                // ORR
+                let result = self.get_reg(rd) | self.get_reg(rs);
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b1101 => {
+                // MUL
+                let result = self.get_reg(rd).wrapping_mul(self.get_reg(rs));
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+                // TODO: C flag is unpredictable in v4
+            }
+            0b1110 => {
+                // BIC
+                let result = self.get_reg(rd) & !self.get_reg(rs);
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
+            0b1111 => {
+                // MVN
+                let result = !self.get_reg(rs);
+                self.set_reg(rd, result);
+                if rd == 15 {
+                    self.flush_pipeline();
+                }
+                self.set_flag(CPSR::N, result.bit(31) == 1);
+                self.set_flag(CPSR::Z, result == 0);
+            }
             _ => unreachable!(),
         }
     }

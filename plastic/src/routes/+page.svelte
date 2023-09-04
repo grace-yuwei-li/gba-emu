@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Debugger from "../components/Debugger.svelte";
+	import Debugger from "../components/Debugger/Debugger.svelte";
 	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
@@ -41,6 +41,8 @@
         position: relative;
         flex-direction: row;
         align-items: stretch;
+        /* Prevents overflow */
+        min-height: 0;
     }
 
     #screen-wrapper {

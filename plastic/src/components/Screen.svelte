@@ -3,7 +3,7 @@
 
     let canvas: HTMLCanvasElement;
 
-    $: details = $gba?.inspect_ppu();
+    $: details = $gba?.ppu;
 
     $: {
         const canvas_data = details?.screen();
@@ -30,8 +30,8 @@
 
 <style>
     canvas {
-        width: calc(3 * 240px);
-        height: calc(3 * 160px);
+        width: calc(2 * 240px);
+        height: calc(2 * 160px);
         padding: 1em;
     }
 </style>
