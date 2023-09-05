@@ -173,7 +173,7 @@ alu_thumb_instr_impl!(ADC, "ADC", |op1, op2, c| {
         Some(result2),
         FlagUpdates {
             c: Some(carry1 | carry2),
-            v: Some(add_overflows(op1, op1, result1) | add_overflows(result1, c, result2)),
+            v: Some(add_overflows(op1, op2, result1) | add_overflows(result1, c, result2)),
             ..FlagUpdates::default_nz(result2)
         },
     )
@@ -188,7 +188,7 @@ alu_thumb_instr_impl!(SBC, "SBC", |op1, op2, c| {
         Some(result2),
         FlagUpdates {
             c: Some(!(borrow1 | borrow2)),
-            v: Some(sub_overflows(op1, op1, result1) | sub_overflows(result1, not_c, result2)),
+            v: Some(sub_overflows(op1, op2, result1) | sub_overflows(result1, not_c, result2)),
             ..FlagUpdates::default_nz(result2)
         },
     )
