@@ -77,6 +77,12 @@ impl GbaCore {
         }
     }
 
+    pub fn tick_multiple(&mut self, num_ticks: u32) {
+        for _ in 0..num_ticks {
+            self.tick();
+        }
+    }
+
     fn should_break(&self, address: &u32) -> bool {
         match self.cpu.get_state() {
             State::ARM => self.arm_breakpoints.contains(address),

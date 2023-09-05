@@ -442,6 +442,12 @@ export class GbaCore {
         wasm.gbacore_tick(this.__wbg_ptr);
     }
     /**
+    * @param {number} num_ticks
+    */
+    tick_multiple(num_ticks) {
+        wasm.gbacore_tick_multiple(this.__wbg_ptr, num_ticks);
+    }
+    /**
     */
     load_test_rom() {
         wasm.gbacore_load_test_rom(this.__wbg_ptr);

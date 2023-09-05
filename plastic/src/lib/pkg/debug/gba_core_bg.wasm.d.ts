@@ -10,6 +10,7 @@ export function gbacore_inspect_ppu(a: number): number;
 export function gbacore_inspect_memory(a: number): number;
 export function gbacore_thumb_state(a: number): number;
 export function gbacore_tick(a: number): void;
+export function gbacore_tick_multiple(a: number, b: number): void;
 export function gbacore_load_test_rom(a: number): void;
 export function gbacore_load_rom(a: number, b: number, c: number): void;
 export function gbacore_skip_bios(a: number): void;

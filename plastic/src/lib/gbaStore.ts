@@ -41,9 +41,7 @@ export const tick = (numTicks: number) => {
 			return details;
 		}
 
-		for (let i = 0; i < numTicks; i++) {
-			details.gba.tick();
-		}
+		details.gba.tick_multiple(numTicks);
 
 		details.cpu.free();
 		details.ppu.free();

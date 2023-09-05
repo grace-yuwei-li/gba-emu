@@ -82,6 +82,10 @@ export class GbaCore {
 */
   tick(): void;
 /**
+* @param {number} num_ticks
+*/
+  tick_multiple(num_ticks: number): void;
+/**
 */
   load_test_rom(): void;
 /**
@@ -175,6 +179,7 @@ export interface InitOutput {
   readonly gbacore_inspect_memory: (a: number) => number;
   readonly gbacore_thumb_state: (a: number) => number;
   readonly gbacore_tick: (a: number) => void;
+  readonly gbacore_tick_multiple: (a: number, b: number) => void;
   readonly gbacore_load_test_rom: (a: number) => void;
   readonly gbacore_load_rom: (a: number, b: number, c: number) => void;
   readonly gbacore_skip_bios: (a: number) => void;
