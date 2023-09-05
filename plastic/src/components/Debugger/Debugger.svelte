@@ -170,7 +170,7 @@
 	#debugger {
         flex-grow: 1;
 		position: relative;
-		width: 700px;
+		width: 500px;
 		overflow: hidden;
         background-color: white;
         height: 100%;

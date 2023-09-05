@@ -28,6 +28,7 @@ export function gbacore_add_thumb_breakpoint(a: number, b: number): void;
 export function gbacore_remove_arm_breakpoint(a: number, b: number): void;
 export function gbacore_remove_thumb_breakpoint(a: number, b: number): void;
 export function gbacore_read_address(a: number, b: number): number;
+export function gbacore_set_key(a: number, b: number, c: number): void;
 export function gbacore_set_stopped(a: number, b: number): void;
 export function disassemble_arm(a: number, b: number): void;
 export function disassemble_thumb(a: number, b: number): void;

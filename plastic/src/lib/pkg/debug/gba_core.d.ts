@@ -12,6 +12,20 @@ export function disassemble_arm(instruction: number): string;
 export function disassemble_thumb(instruction: number): string;
 /**
 */
+export enum Key {
+  A = 0,
+  B = 1,
+  Select = 2,
+  Start = 3,
+  Right = 4,
+  Left = 5,
+  Up = 6,
+  Down = 7,
+  R = 8,
+  L = 9,
+}
+/**
+*/
 export class CpuDetails {
   free(): void;
 /**
@@ -119,6 +133,11 @@ export class GbaCore {
 */
   read_address(address: number): number;
 /**
+* @param {number} key
+* @param {boolean} pressed
+*/
+  set_key(key: number, pressed: boolean): void;
+/**
 */
   stopped: boolean;
 }
@@ -174,6 +193,7 @@ export interface InitOutput {
   readonly gbacore_remove_arm_breakpoint: (a: number, b: number) => void;
   readonly gbacore_remove_thumb_breakpoint: (a: number, b: number) => void;
   readonly gbacore_read_address: (a: number, b: number) => number;
+  readonly gbacore_set_key: (a: number, b: number, c: number) => void;
   readonly gbacore_set_stopped: (a: number, b: number) => void;
   readonly disassemble_arm: (a: number, b: number) => void;
   readonly disassemble_thumb: (a: number, b: number) => void;

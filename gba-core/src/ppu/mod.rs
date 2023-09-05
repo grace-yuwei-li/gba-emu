@@ -14,7 +14,7 @@ pub struct Ppu {
     pub(super) vram: Vec<u8>,
     oam: Vec<u8>,
 
-    vblank_timer: u8,
+    vblank_timer: u32,
 }
 
 #[wasm_bindgen]
@@ -41,7 +41,7 @@ impl Default for Ppu {
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
 
-            vblank_timer: 100,
+            vblank_timer: 0,
         }
     }
 }
@@ -100,10 +100,10 @@ impl Ppu {
     }
 
     pub fn tick(&mut self) {
-        // Toggle V-Blank flag every 100 cycles
+        // Toggle V-Blank flag every 100000 cycles
         // Not accurate at all, but lets us proceed in arm.gba
         if self.vblank_timer == 0 {
-            self.vblank_timer = 100;
+            self.vblank_timer = 100000;
             let dispstat = self.lcd_regs[4];
             let vblank = dispstat.bit(0);
             self.lcd_regs[4] = dispstat.bits(1, 15) | (!vblank & 1);

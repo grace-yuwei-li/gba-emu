@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { handleKeyDown, handleKeyUp } from "$lib/keys";
 	import Debugger from "../components/Debugger/Debugger.svelte";
 	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
@@ -19,7 +20,7 @@
         <div>
             <EmuInfo />
         </div>
-        <div id="screen-wrapper">
+        <div id="screen-wrapper" on:keydown={handleKeyDown} on:keyup={handleKeyUp} tabindex={0}>
             <Screen />
         </div>
     </div>

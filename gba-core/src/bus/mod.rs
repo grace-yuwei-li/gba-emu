@@ -1,5 +1,6 @@
 mod io_map;
 
+pub use io_map::Key;
 use io_map::IoMap;
 use num_traits::{AsPrimitive, FromBytes, ToBytes};
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -53,6 +54,10 @@ impl Default for Bus {
 }
 
 impl Bus {
+    pub fn set_key(&mut self, key: Key, pressed: bool) {
+        self.io_map.set_key(key, pressed);
+    }
+
     pub fn inspect(&self) -> MemoryDetails {
         MemoryDetails {
             vram: self.ppu.vram.clone(),

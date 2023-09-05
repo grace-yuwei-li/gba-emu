@@ -85,7 +85,7 @@ impl GbaCore {
     }
 
     pub fn load_test_rom(&mut self) {
-        let bytes = include_bytes!("../tests/roms/thumb.gba");
+        let bytes = include_bytes!("../tests/roms/armwrestler-gba-fixed.gba");
         //let bytes = include_bytes!("../tests/roms/panda.gba");
         self.load_rom(bytes);
     }
@@ -141,5 +141,9 @@ impl GbaCore {
 
     pub fn read_address(&self, address: u32) -> u32 {
         self.bus.read(address, &self.cpu)
+    }
+
+    pub fn set_key(&mut self, key: bus::Key, pressed: bool) {
+        self.bus.set_key(key, pressed);
     }
 }

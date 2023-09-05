@@ -36,9 +36,11 @@ impl ArmInstruction for Mla {
         let rs = cpu.get_reg(instruction.bits(8, 11));
         let rm = cpu.get_reg(instruction.bits(0, 3));
 
-        cpu.set_reg(rd, rm * rs + rn);
+        let result = rm * rs + rn;
+        cpu.set_reg(rd, result);
         if s == 1 {
-            todo!("mla set flags")
+            cpu.set_flag(CPSR::N, result.bit(31) == 1);
+            cpu.set_flag(CPSR::Z, result == 0);
         }
     }
 

@@ -269,6 +269,9 @@ function handleError(f, args) {
 }
 /**
 */
+export const Key = Object.freeze({ A:0,"0":"A",B:1,"1":"B",Select:2,"2":"Select",Start:3,"3":"Start",Right:4,"4":"Right",Left:5,"5":"Left",Up:6,"6":"Up",Down:7,"7":"Down",R:8,"8":"R",L:9,"9":"L", });
+/**
+*/
 export class CpuDetails {
 
     static __wrap(ptr) {
@@ -539,6 +542,13 @@ export class GbaCore {
     read_address(address) {
         const ret = wasm.gbacore_read_address(this.__wbg_ptr, address);
         return ret >>> 0;
+    }
+    /**
+    * @param {number} key
+    * @param {boolean} pressed
+    */
+    set_key(key, pressed) {
+        wasm.gbacore_set_key(this.__wbg_ptr, key, pressed);
     }
 }
 /**
