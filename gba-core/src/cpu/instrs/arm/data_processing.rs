@@ -525,10 +525,10 @@ impl ArmInstruction for Rsc {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
         execute_op(cpu, instruction, false, |op2, op1, shift_carry| {
             let (mut result, mut borrow) = op1.overflowing_sub(op2);
-            let mut overflow = op1.bit(31) != op2.bit(31) && op1.bit(31) != result.bit(31);
+            let mut overflow = sub_overflows(op1, op2, result);
             if !shift_carry {
                 let (final_result, b2) = result.overflowing_sub(1);
-                let overflow2 = result.bit(31) != 0 && final_result.bit(31) == 1;
+                let overflow2 = sub_overflows(result, 1, final_result);
                 result = final_result;
                 borrow |= b2;
                 overflow |= overflow2;
