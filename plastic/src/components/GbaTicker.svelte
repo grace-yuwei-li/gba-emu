@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { gba, init, tick } from '$lib/gbaStore';
+	import { init, tick } from '$lib/gbaStore';
+    import { addFrameTime } from '$lib/frameTimeStore';
 	import { onMount } from 'svelte';
 
     export let clockSpeed: number;
 
     let start: number;
+    let tickDebt: number = 0;
 
     const tickGba: FrameRequestCallback = (timestamp) => {
         if (start === undefined) {
@@ -12,9 +14,17 @@
         }
         const elapsedMillis = timestamp - start;
 
-        const numTicks = Math.ceil(clockSpeed * elapsedMillis / 1000);
+        tickDebt += clockSpeed * elapsedMillis / 1000;
 
+        const numTicks = Math.floor(tickDebt);
+
+        // Record how long this frame takes
+        const frameStart = performance.now();
         tick(numTicks);
+        const frameEnd = performance.now();
+        addFrameTime(frameEnd - frameStart);
+
+        tickDebt -= numTicks
 
         start = timestamp;
 
@@ -25,8 +35,5 @@
         await init();
 
         requestAnimationFrame(tickGba);
-
-        console.log('mounted');
-        console.log($gba);
 	});
 </script>

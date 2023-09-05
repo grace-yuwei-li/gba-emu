@@ -1,7 +1,10 @@
 <script lang="ts">
+    import { frameTimes } from '$lib/frameTimeStore';
     import { gba, reset, tick } from '$lib/gbaStore';
 
     export let clockSpeed: number = 0;
+
+    $: averageFrameTime = $frameTimes.buffer.reduce((acc, x) => acc + x, 0) / $frameTimes.buffer.length;
 
     const resume = () => {
         $gba?.gba.enable_debugger(false);
@@ -40,6 +43,7 @@
         Clock speed (hz):
         <input type="number" bind:value={clockSpeed} />
     </label>
+    <span>Average millis/frame: {averageFrameTime.toFixed(2)}</span>
     <span>PC: 0x{$gba?.cpu.pc().toString(16)}</span>
     <span>Thumb: {$gba?.gba.thumb_state()}</span>
 </div>
