@@ -24,7 +24,8 @@ pub struct GbaCore {
 
     pub stopped: bool,
     debugger_enabled: bool,
-    breakpoints: HashSet<u32>,
+    arm_breakpoints: HashSet<u32>,
+    thumb_breakpoints: HashSet<u32>,
 }
 
 impl Default for GbaCore {
@@ -35,7 +36,8 @@ impl Default for GbaCore {
 
             stopped: false,
             debugger_enabled: true,
-            breakpoints: HashSet::new(),
+            arm_breakpoints: HashSet::new(),
+            thumb_breakpoints: HashSet::new(),
         }
     }
 }
@@ -65,17 +67,20 @@ impl GbaCore {
     }
 
     pub fn tick(&mut self) {
-        if self.debugger_enabled
-            && self
-                .breakpoints
-                .contains(&self.cpu.get_executing_instruction_pc())
-        {
+        if self.debugger_enabled && self.should_break(&self.cpu.get_executing_instruction_pc()) {
             self.stopped = true;
         }
 
         if !self.stopped {
             self.cpu.tick(&mut self.bus);
             self.bus.ppu.tick();
+        }
+    }
+
+    fn should_break(&self, address: &u32) -> bool {
+        match self.cpu.get_state() {
+            State::ARM => self.arm_breakpoints.contains(address),
+            State::Thumb => self.thumb_breakpoints.contains(address),
         }
     }
 
@@ -96,7 +101,8 @@ impl GbaCore {
     pub fn reset(self) -> Self {
         Self {
             stopped: self.stopped,
-            breakpoints: self.breakpoints,
+            arm_breakpoints: self.arm_breakpoints,
+            thumb_breakpoints: self.thumb_breakpoints,
             ..Self::default()
         }
     }
@@ -109,16 +115,28 @@ impl GbaCore {
         self.stopped = value;
     }
 
-    pub fn breakpoints(&self) -> Vec<u32> {
-        self.breakpoints.iter().copied().collect()
+    pub fn arm_breakpoints(&self) -> Vec<u32> {
+        self.arm_breakpoints.iter().copied().collect()
     }
 
-    pub fn add_breakpoint(&mut self, breakpoint: u32) {
-        self.breakpoints.insert(breakpoint);
+    pub fn thumb_breakpoints(&self) -> Vec<u32> {
+        self.thumb_breakpoints.iter().copied().collect()
     }
 
-    pub fn remove_breakpoint(&mut self, breakpoint: u32) {
-        self.breakpoints.remove(&breakpoint);
+    pub fn add_arm_breakpoint(&mut self, breakpoint: u32) {
+        self.arm_breakpoints.insert(breakpoint);
+    }
+
+    pub fn add_thumb_breakpoint(&mut self, breakpoint: u32) {
+        self.thumb_breakpoints.insert(breakpoint);
+    }
+
+    pub fn remove_arm_breakpoint(&mut self, breakpoint: u32) {
+        self.arm_breakpoints.remove(&breakpoint);
+    }
+
+    pub fn remove_thumb_breakpoint(&mut self, breakpoint: u32) {
+        self.thumb_breakpoints.remove(&breakpoint);
     }
 
     pub fn read_address(&self, address: u32) -> u32 {

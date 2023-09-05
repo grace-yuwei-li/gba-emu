@@ -170,7 +170,7 @@ impl MetaInstr {
     }
 }
 
-struct TodoInstruction(String);
+pub struct TodoInstruction(pub String);
 impl TodoInstruction {
     pub fn new_message(message: String) -> Self {
         Self(message)
@@ -205,25 +205,25 @@ impl ArmInstruction for UnimplementedInstruction {
 impl Cpu {
     pub fn check_cond(&mut self, cond_bits: u32) -> bool {
         match cond_bits {
-            0b0000 => self.get_cpsr_bits(CPSR::Z) != 0,
-            0b0001 => self.get_cpsr_bits(CPSR::Z) == 0,
-            0b0010 => self.get_cpsr_bits(CPSR::C) != 0,
-            0b0011 => self.get_cpsr_bits(CPSR::C) == 0,
-            0b0100 => self.get_cpsr_bits(CPSR::N) != 0,
-            0b0101 => self.get_cpsr_bits(CPSR::N) == 0,
-            0b0110 => self.get_cpsr_bits(CPSR::V) != 0,
-            0b0111 => self.get_cpsr_bits(CPSR::V) == 0,
-            0b1000 => self.get_cpsr_bits(CPSR::C) != 0 && self.get_cpsr_bits(CPSR::Z) == 0,
-            0b1001 => self.get_cpsr_bits(CPSR::C) == 0 || self.get_cpsr_bits(CPSR::Z) != 0,
-            0b1010 => self.get_cpsr_bits(CPSR::N) == self.get_cpsr_bits(CPSR::V),
-            0b1011 => self.get_cpsr_bits(CPSR::N) != self.get_cpsr_bits(CPSR::V),
+            0b0000 => self.get_cpsr_bit(CPSR::Z) != 0,
+            0b0001 => self.get_cpsr_bit(CPSR::Z) == 0,
+            0b0010 => self.get_cpsr_bit(CPSR::C) != 0,
+            0b0011 => self.get_cpsr_bit(CPSR::C) == 0,
+            0b0100 => self.get_cpsr_bit(CPSR::N) != 0,
+            0b0101 => self.get_cpsr_bit(CPSR::N) == 0,
+            0b0110 => self.get_cpsr_bit(CPSR::V) != 0,
+            0b0111 => self.get_cpsr_bit(CPSR::V) == 0,
+            0b1000 => self.get_cpsr_bit(CPSR::C) != 0 && self.get_cpsr_bit(CPSR::Z) == 0,
+            0b1001 => self.get_cpsr_bit(CPSR::C) == 0 || self.get_cpsr_bit(CPSR::Z) != 0,
+            0b1010 => self.get_cpsr_bit(CPSR::N) == self.get_cpsr_bit(CPSR::V),
+            0b1011 => self.get_cpsr_bit(CPSR::N) != self.get_cpsr_bit(CPSR::V),
             0b1100 => {
-                self.get_cpsr_bits(CPSR::Z) == 0
-                    && (self.get_cpsr_bits(CPSR::N) == self.get_cpsr_bits(CPSR::V))
+                self.get_cpsr_bit(CPSR::Z) == 0
+                    && (self.get_cpsr_bit(CPSR::N) == self.get_cpsr_bit(CPSR::V))
             }
             0b1101 => {
-                self.get_cpsr_bits(CPSR::Z) != 0
-                    || (self.get_cpsr_bits(CPSR::N) != self.get_cpsr_bits(CPSR::V))
+                self.get_cpsr_bit(CPSR::Z) != 0
+                    || (self.get_cpsr_bit(CPSR::N) != self.get_cpsr_bit(CPSR::V))
             }
             0b1110 => true,
             0b1111 => unimplemented!(),
@@ -231,9 +231,7 @@ impl Cpu {
         }
     }
 
-    pub fn disassemble_cond(instruction: u32) -> &'static str {
-        let cond_bits = instruction >> 28;
-
+    pub fn disassemble_cond(cond_bits: u32) -> &'static str {
         match cond_bits {
             0b0000 => "EQ",
             0b0001 => "NE",
@@ -255,7 +253,7 @@ impl Cpu {
         }
     }
 
-    pub(super) fn decode_arm(&mut self, instruction: u32) -> Box<dyn ArmInstruction> {
+    pub(super) fn decode_arm(instruction: u32) -> Box<dyn ArmInstruction> {
         MetaInstr::decode_arm(instruction)
     }
 }

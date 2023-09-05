@@ -25,7 +25,7 @@ impl ArmInstruction for Branch {
         let offset = instruction & 0xffffff;
         let offset = ((offset << 8) as i32) >> 6;
 
-        let cond = Cpu::disassemble_cond(instruction);
+        let cond = Cpu::disassemble_cond(instruction >> 28);
         format!("B{}{} PC+{:x}", if link { "L" } else { "" }, cond, offset)
     }
 }

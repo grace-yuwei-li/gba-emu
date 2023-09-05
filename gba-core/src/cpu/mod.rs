@@ -29,10 +29,7 @@ pub enum Mode {
 }
 
 enum CPSR {
-    M,
     T,
-    F,
-    I,
     V,
     C,
     Z,
@@ -96,7 +93,7 @@ impl Default for Cpu {
 
 impl Cpu {
     pub fn get_state(&self) -> State {
-        if self.get_cpsr_bits(CPSR::T) == 0 {
+        if self.get_cpsr_bit(CPSR::T) == 0 {
             State::ARM
         } else {
             State::Thumb
@@ -155,9 +152,12 @@ impl Cpu {
         self.regs.get(idx, &self.get_mode())
     }
 
-    /// Should be ran before calling .tick()
+    /// Only correct outside of .tick() calls
     pub fn get_executing_instruction_pc(&self) -> u32 {
-        self.get_reg_internal(15) - 8
+        match self.get_state() {
+            State::ARM => self.get_reg_internal(15) - 8,
+            State::Thumb => self.get_reg_internal(15) - 4,
+        }
     }
 
     fn set_reg(&mut self, idx: u32, val: u32) {
@@ -169,12 +169,9 @@ impl Cpu {
         *self.regs.get_mut(idx, &mode) = val;
     }
 
-    fn get_cpsr_bits(&self, field: CPSR) -> u32 {
+    fn get_cpsr_bit(&self, field: CPSR) -> u32 {
         match field {
-            CPSR::M => self.regs.cpsr & 0b11111,
             CPSR::T => (self.regs.cpsr >> 5) & 1,
-            CPSR::F => (self.regs.cpsr >> 6) & 1,
-            CPSR::I => (self.regs.cpsr >> 7) & 1,
             CPSR::V => (self.regs.cpsr >> 28) & 1,
             CPSR::C => (self.regs.cpsr >> 29) & 1,
             CPSR::Z => (self.regs.cpsr >> 30) & 1,
@@ -184,10 +181,7 @@ impl Cpu {
 
     fn set_flag(&mut self, flag: CPSR, value: bool) {
         match flag {
-            CPSR::M => unimplemented!(),
             CPSR::T => self.regs.cpsr.mut_bit(5, value),
-            CPSR::F => self.regs.cpsr.mut_bit(6, value),
-            CPSR::I => self.regs.cpsr.mut_bit(7, value),
             CPSR::V => self.regs.cpsr.mut_bit(28, value),
             CPSR::C => self.regs.cpsr.mut_bit(29, value),
             CPSR::Z => self.regs.cpsr.mut_bit(30, value),

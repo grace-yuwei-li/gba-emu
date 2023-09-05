@@ -20,10 +20,14 @@
     }
 
     const handleReset = () => {
-        let breakpoints = Array.from($gba?.gba.breakpoints() ?? []);
+        let arm_breakpoints = Array.from($gba?.gba.arm_breakpoints() ?? []);
+        let thumb_breakpoints = Array.from($gba?.gba.thumb_breakpoints() ?? []);
         reset();
-        for (const bp of breakpoints) {
-            $gba?.gba.add_breakpoint(bp);
+        for (const bp of arm_breakpoints) {
+            $gba?.gba.add_arm_breakpoint(bp);
+        }
+        for (const bp of thumb_breakpoints) {
+            $gba?.gba.add_thumb_breakpoint(bp);
         }
     }
 </script>

@@ -12,18 +12,15 @@ impl Cpu {
         match self.get_state() {
             State::ARM => {
                 if !self.check_cond(instruction.bits(28, 31)) {
-                    log::trace!("Cond check failed for instruction {:#034b}", instruction);
                     return;
                 }
 
-                log::trace!("Executing ARM instruction {:08x}", instruction);
-                let instr_type = self.decode_arm(instruction);
+                let instr_type = Self::decode_arm(instruction);
                 instr_type.execute(self, bus, instruction);
             }
             State::Thumb => {
-                log::trace!("Executing THUMB instruction {:04x}", instruction as u16);
-                let fp = self.decode_thumb(instruction as u16);
-                fp(self, bus, instruction as u16)
+                let thumb_instruction = Self::decode_thumb(instruction as u16);
+                thumb_instruction.execute(self, bus, instruction as u16);
             }
         }
     }
@@ -31,5 +28,10 @@ impl Cpu {
 
 #[wasm_bindgen]
 pub fn disassemble_arm(instruction: u32) -> String {
-    arm::MetaInstr::decode_arm(instruction).disassembly(instruction)
+    Cpu::decode_arm(instruction).disassembly(instruction)
+}
+
+#[wasm_bindgen]
+pub fn disassemble_thumb(instruction: u16) -> String {
+    Cpu::decode_thumb(instruction).disassembly(instruction)
 }

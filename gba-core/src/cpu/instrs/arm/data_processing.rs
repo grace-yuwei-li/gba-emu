@@ -135,7 +135,7 @@ impl ShifterOperand {
             Self::Imm { imm, c } => (
                 imm,
                 match c {
-                    None => cpu.get_cpsr_bits(CPSR::C) == 1,
+                    None => cpu.get_cpsr_bit(CPSR::C) == 1,
                     Some(b) => b,
                 },
             ),
@@ -147,7 +147,7 @@ impl ShifterOperand {
                 }
 
                 if shift_amt == 0 {
-                    (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
+                    (rm_val, cpu.get_cpsr_bit(CPSR::C) == 1)
                 } else if shift_amt < 32 {
                     (
                         rm_val << shift_amt,
@@ -179,7 +179,7 @@ impl ShifterOperand {
                     ShiftSource::Register(reg) => {
                         let rs = cpu.get_reg(reg);
                         if rs.bits(0, 7) == 0 {
-                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bit(CPSR::C) == 1)
                         } else if rs.bits(0, 7) < 32 {
                             (
                                 rm_val >> rs.bits(0, 7),
@@ -217,7 +217,7 @@ impl ShifterOperand {
                     ShiftSource::Register(reg) => {
                         let lower_bits = cpu.get_reg(reg).bits(0, 7);
                         if lower_bits == 0 {
-                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bit(CPSR::C) == 1)
                         } else if lower_bits < 32 {
                             (
                                 ((rm_val as i32) >> lower_bits) as u32,
@@ -247,7 +247,7 @@ impl ShifterOperand {
                     ShiftSource::Register(reg) => {
                         let rs = cpu.get_reg(reg);
                         if rs.bits(0, 7) == 0 {
-                            (rm_val, cpu.get_cpsr_bits(CPSR::C) == 1)
+                            (rm_val, cpu.get_cpsr_bit(CPSR::C) == 1)
                         } else if rs.bits(0, 4) == 0 {
                             (rm_val, cpu.get_reg(rm).bit(31) == 1)
                         } else {
@@ -260,7 +260,7 @@ impl ShifterOperand {
                 }
             }
             Self::RRX { rm } => {
-                let carry_in = cpu.get_cpsr_bits(CPSR::C);
+                let carry_in = cpu.get_cpsr_bit(CPSR::C);
                 (
                     (cpu.get_reg(rm) >> 1).bits(0, 30) | carry_in << 31,
                     cpu.get_reg(rm).bit(0) == 1,
@@ -554,7 +554,7 @@ impl ArmInstruction for Rsc {
 
 impl ArmInstruction for Adc {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        let c_flag = cpu.get_cpsr_bits(CPSR::C);
+        let c_flag = cpu.get_cpsr_bit(CPSR::C);
         execute_op(cpu, instruction, false, |op1, op2, _| {
             let (mut result, mut carry) = op1.overflowing_add(op2);
             let mut overflow = add_overflows(op1, op2, result);

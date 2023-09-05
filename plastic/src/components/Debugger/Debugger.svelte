@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gba } from "$lib/gbaStore";
-    import { disassemble_arm } from '$lib/pkg/debug/gba_core';
+    import { disassemble_arm, disassemble_thumb } from '$lib/pkg/debug/gba_core';
     import { type LineData, InstructionMode } from '$lib/debugger';
 	import Line from "./Line.svelte";
 
@@ -38,8 +38,11 @@
     });
 
     // Map of breakpoints
-    let breakpoints: Record<number, boolean>;
-    $: breakpoints = Object.fromEntries(Array.from($gba?.gba.breakpoints() ?? [])
+    let arm_breakpoints: Record<number, boolean>;
+    let thumb_breakpoints: Record<number, boolean>;
+    $: arm_breakpoints = Object.fromEntries(Array.from($gba?.gba.arm_breakpoints() ?? [])
+                        .map((address:number) => [address, true]));
+    $: thumb_breakpoints = Object.fromEntries(Array.from($gba?.gba.thumb_breakpoints() ?? [])
                         .map((address:number) => [address, true]));
 
     const instructionModeOptions = [
@@ -73,7 +76,7 @@
             }
 
             if (instructionSize === 2) {
-                disassembly = "No THUMB disassembly yet";
+                disassembly = disassemble_thumb(memValue);
             } else if (instructionSize === 4) {
                 disassembly = disassemble_arm(memValue);
             } else {
@@ -98,10 +101,18 @@
     }
 
     const toggleBreakpoint = (address: number) => {
-        if (breakpoints[address]) {
-            $gba?.gba.remove_breakpoint(address);
-        } else {
-            $gba?.gba.add_breakpoint(address);
+        if (instructionSize === 4) {
+            if (arm_breakpoints[address]) {
+                $gba?.gba.remove_arm_breakpoint(address);
+            } else {
+                $gba?.gba.add_arm_breakpoint(address);
+            }
+        } else if (instructionSize === 2) {
+            if (thumb_breakpoints[address]) {
+                $gba?.gba.remove_thumb_breakpoint(address);
+            } else {
+                $gba?.gba.add_thumb_breakpoint(address);
+            }
         }
         $gba = $gba;
     };
@@ -135,7 +146,7 @@
                     instructionSize={instructionSize} 
                     isExecuting={$gba?.cpu.executing_pc === line.address}
                     isPc={$gba?.cpu.pc() === line.address}
-                    isBreakpoint={Boolean(breakpoints[line.address])}
+                    isBreakpoint={Boolean(instructionSize === 4 ? arm_breakpoints[line.address] : thumb_breakpoints[line.address])}
                     toggleBreakpoint={toggleBreakpoint} />
             {/each}
         </table>
@@ -163,18 +174,6 @@
 		overflow: hidden;
         background-color: white;
         height: 100%;
-	}
-
-	.gutter {
-		position: absolute;
-		top: 0;
-		left: 0;
-        text-align: end;
-	}
-
-	.content {
-		position: absolute;
-		top: 0;
 	}
 
     .instruction-mode-label {
