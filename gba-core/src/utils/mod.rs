@@ -21,14 +21,6 @@ where
     bytes.copy_from_slice(&value.to_le_bytes());
 }
 
-pub fn get_u32(slice: &[u8], index: usize) -> u32 {
-    u32::from_le_bytes(slice[index..index + 4].try_into().unwrap())
-}
-
-pub fn set_u32(slice: &mut [u8], index: usize, value: u32) {
-    slice[index..index + 4].copy_from_slice(&value.to_le_bytes());
-}
-
 pub fn add_overflows(op1: u32, op2: u32, result: u32) -> bool {
     (op1.bit(31) == op2.bit(31)) && (op1.bit(31) != result.bit(31))
 }

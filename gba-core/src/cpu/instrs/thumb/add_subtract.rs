@@ -1,6 +1,6 @@
 use crate::{
     cpu::{Cpu, CPSR},
-    utils::{AddressableBits, sub_overflows, add_overflows},
+    utils::{add_overflows, sub_overflows, AddressableBits},
 };
 
 use super::ThumbInstruction;

@@ -2,7 +2,7 @@ use super::AddressableBits;
 
 pub fn bg_mode_3(input: &[u8]) -> Vec<u8> {
     // Each color takes up two bytes
-    // debug_assert_eq!(input.len() % 2, 0);
+    debug_assert_eq!(input.len() % 2, 0);
 
     input
         .chunks_exact(2)

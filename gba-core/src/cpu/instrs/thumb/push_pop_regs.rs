@@ -1,4 +1,4 @@
-use crate::utils::{AddressableBits, reg_list};
+use crate::utils::{reg_list, AddressableBits};
 
 use super::ThumbInstruction;
 

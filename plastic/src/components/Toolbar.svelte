@@ -1,9 +1,10 @@
 <script lang="ts">
     import { frameTimes } from '$lib/frameTimeStore';
-    import { gba, reset, tick } from '$lib/gbaStore';
+    import { gba, rom, reset, tick } from '$lib/gbaStore';
 
     export let clockSpeed: number = 0;
 
+    let files: FileList;
     $: averageFrameTime = $frameTimes.buffer.reduce((acc, x) => acc + x, 0) / $frameTimes.buffer.length;
 
     const resume = () => {
@@ -33,9 +34,18 @@
             $gba?.gba.add_thumb_breakpoint(bp);
         }
     }
+
+    $: if (files && files[0]) {
+        files[0].arrayBuffer().then((array) => {
+            let bytes = new Uint8Array(array);
+            $rom = bytes;
+            reset();
+        })
+    }
 </script>
 
 <div id="toolbar" >
+    <input type="file" bind:files/>
     <button on:click={handleReset}>Reset</button>
     <button on:click={resume}>Resume</button>
     <button on:click={step}>Step</button>

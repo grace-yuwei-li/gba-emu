@@ -1,6 +1,7 @@
+use num_traits::{FromBytes, ToBytes};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::utils::AddressableBits;
+use crate::utils::{set, AddressableBits};
 
 pub struct IoMap {
     mock: [u8; 0x400],
@@ -42,7 +43,7 @@ const BASE_ADDR: usize = 0x4000000;
 
 impl IoMap {
     pub fn new() -> Self {
-        Self { 
+        Self {
             mock: [0; 0x400],
             keyinput: 0xff,
         }
@@ -52,13 +53,15 @@ impl IoMap {
         self.keyinput.mut_bit(key.bit(), !pressed);
     }
 
-    pub fn read(&self, index: usize) -> u32 {
-        u32::from_le_bytes([
-            self.read_byte(index),
-            self.read_byte(index + 1),
-            self.read_byte(index + 2),
-            self.read_byte(index + 3),
-        ])
+    pub fn read<T, const N: usize>(&self, index: usize) -> T
+    where
+        T: FromBytes<Bytes = [u8; N]> + 'static + Copy,
+    {
+        let mut bytes = [0; N];
+        for i in 0..N {
+            bytes[i] = self.read_byte(index + i);
+        }
+        T::from_le_bytes(&bytes)
     }
 
     fn read_byte(&self, index: usize) -> u8 {
@@ -71,8 +74,10 @@ impl IoMap {
         }
     }
 
-    pub fn write(&mut self, index: usize, value: u32) {
-        let index = index - BASE_ADDR;
-        self.mock[index..index + 4].clone_from_slice(&value.to_le_bytes());
+    pub fn write<T, const N: usize>(&mut self, index: usize, value: T)
+    where
+        T: ToBytes<Bytes = [u8; N]>,
+    {
+        set(&mut self.mock, index - BASE_ADDR, value);
     }
 }

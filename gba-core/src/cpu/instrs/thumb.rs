@@ -1,19 +1,19 @@
+mod add_offset_to_stack_pointer;
 mod add_subtract;
 mod alu_operations;
 mod branch;
 mod high_reg_ops_or_bx;
 mod load_address;
 mod load_store_halfword;
+mod load_store_immediate_offset;
+mod load_store_register_offset;
 mod load_store_sign_extended;
 mod mov_cmp_add_sub_immediate;
 mod move_shifted_register;
 mod multiple_load_store;
 mod pc_relative_load;
-mod add_offset_to_stack_pointer;
-mod load_store_immediate_offset;
-mod load_store_register_offset;
-mod sp_relative_ls;
 mod push_pop_regs;
+mod sp_relative_ls;
 
 use crate::{bus::Bus, cpu::Cpu};
 
@@ -183,15 +183,17 @@ impl Cpu {
             ThumbInstrGroup::Branch => Box::new(branch::Branch),
             ThumbInstrGroup::LoadStoreSignExtended => load_store_sign_extended::decode(instruction),
             ThumbInstrGroup::AddOffsetToStackPointer => add_offset_to_stack_pointer::decode(),
-            ThumbInstrGroup::LoadStoreImmediateOffset => load_store_immediate_offset::decode(instruction),
-            ThumbInstrGroup::LoadStoreRegisterOffset => load_store_register_offset::decode(instruction),
+            ThumbInstrGroup::LoadStoreImmediateOffset => {
+                load_store_immediate_offset::decode(instruction)
+            }
+            ThumbInstrGroup::LoadStoreRegisterOffset => {
+                load_store_register_offset::decode(instruction)
+            }
             ThumbInstrGroup::SpRelativeLoadStore => sp_relative_ls::decode(instruction),
             ThumbInstrGroup::PushPopRegisters => push_pop_regs::decode(instruction),
-            ThumbInstrGroup::SoftwareInterrupt
-            | ThumbInstrGroup::Invalid => Box::new(TodoInstruction::new_message(format!(
-                "{:?} {:016b}",
-                thumb_instr, instruction
-            ))),
+            ThumbInstrGroup::SoftwareInterrupt | ThumbInstrGroup::Invalid => Box::new(
+                TodoInstruction::new_message(format!("{:?} {:016b}", thumb_instr, instruction)),
+            ),
         }
     }
 }

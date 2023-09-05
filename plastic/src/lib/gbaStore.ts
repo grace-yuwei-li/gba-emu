@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import initWasm, { CpuDetails, GbaCore, PpuDetails } from '$lib/pkg/debug/gba_core';
 
 interface GbaDetails {
@@ -8,6 +8,7 @@ interface GbaDetails {
 }
 
 export const gba = writable<GbaDetails | undefined>(undefined);
+export const rom = writable<Uint8Array | undefined>(undefined);
 
 export const reset = () => {
 	gba.update((old) => {
@@ -17,7 +18,13 @@ export const reset = () => {
 		}
 
 		const emu = new GbaCore();
-		emu.load_test_rom();
+
+		let rom_data = get(rom);
+		if (!rom_data) {
+			emu.load_test_rom();
+		} else {
+			emu.load_rom(rom_data);
+		}
 		emu.skip_bios();
 
 		return {

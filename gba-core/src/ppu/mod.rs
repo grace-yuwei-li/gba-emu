@@ -1,9 +1,10 @@
 mod utils;
+use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     ppu::utils::bg_mode_3,
-    utils::{get_u32, set_u32, AddressableBits},
+    utils::{get, set, AddressableBits},
 };
 
 use self::utils::bg_mode_4;
@@ -48,36 +49,48 @@ impl Default for Ppu {
 
 impl Ppu {
     // Access to nicely-behaved memory
-    pub fn read_simple(&self, index: usize) -> u32 {
+    pub fn read_simple<T, const N: usize>(&self, index: usize) -> T
+    where
+        T: FromBytes<Bytes = [u8; N]> + 'static + Copy,
+        T: Zero,
+    {
         match index {
-            0x5000000..=0x50003ff => get_u32(&self.bg_obj_palette, index - 0x5000000),
-            0x5000400..=0x5ffffff => 0,
-            0x6000000..=0x6017fff => get_u32(&self.vram, index - 0x6000000),
-            0x6018000..=0x6ffffff => 0,
-            0x7000000..=0x70003ff => get_u32(&self.oam, index - 0x7000000),
-            0x7000400..=0x7ffffff => 0,
+            0x5000000..=0x50003ff => get(&self.bg_obj_palette, index - 0x5000000),
+            0x5000400..=0x5ffffff => T::zero(),
+            0x6000000..=0x6ffffff => get(&self.vram, index - 0x6000000),
+            0x7000000..=0x70003ff => get(&self.oam, index - 0x7000000),
+            0x7000400..=0x7ffffff => T::zero(),
             _ => unreachable!("{:x}", index),
         }
     }
-    pub fn write_simple(&mut self, index: usize, value: u32) {
+
+    pub fn write_simple<T, const N: usize>(&mut self, index: usize, value: T)
+    where
+        T: ToBytes<Bytes = [u8; N]>,
+    {
         match index {
-            0x5000000..=0x50003ff => set_u32(&mut self.bg_obj_palette, index - 0x5000000, value),
-            0x6000000..=0x6017fff => {
-                set_u32(&mut self.vram, index - 0x6000000, value);
+            0x5000000..=0x50003ff => set(&mut self.bg_obj_palette, index - 0x5000000, value),
+            0x6000000..=0x6ffffff => {
+                set(&mut self.vram, index - 0x6000000, value);
             }
-            0x7000000..=0x70003ff => set_u32(&mut self.oam, index - 0x7000000, value),
+            0x7000000..=0x70003ff => set(&mut self.oam, index - 0x7000000, value),
             _ => unreachable!(),
         }
     }
 
     // Side effects out the wazoo
-    pub fn read_lcd_io_regs(&self, index: usize) -> u32 {
-        //web_sys::console::log_1(&format!("read from lcdio {:x}", index).into());
-        get_u32(&self.lcd_regs, index - 0x4000000)
+    pub fn read_lcd_io_regs<T, const N: usize>(&self, index: usize) -> T
+    where
+        T: FromBytes<Bytes = [u8; N]> + 'static + Copy,
+    {
+        get(&self.lcd_regs, index - 0x4000000)
     }
-    pub fn write_lcd_io_regs(&mut self, index: usize, value: u32) {
-        //web_sys::console::log_1(&format!("write to lcdio {:x} {:#034b}", index, value).into());
-        set_u32(&mut self.lcd_regs, index - 0x4000000, value)
+
+    pub fn write_lcd_io_regs<T, const N: usize>(&mut self, index: usize, value: T)
+    where
+        T: ToBytes<Bytes = [u8; N]>,
+    {
+        set(&mut self.lcd_regs, index - 0x4000000, value)
     }
 
     fn bg_mode(&self) -> u8 {
@@ -85,11 +98,13 @@ impl Ppu {
     }
 
     fn get_screen(&self) -> Vec<u8> {
-        match self.bg_mode() {
+        let screen = match self.bg_mode() {
             3 => bg_mode_3(&self.vram[0..240 * 160 * 2]),
             4 => bg_mode_4(&self.vram[0..240 * 160]),
             _ => vec![255; 240 * 160 * 4],
-        }
+        };
+        assert_eq!(screen.len(), 240 * 160 * 4);
+        screen
     }
 
     pub fn inspect(&self) -> PpuDetails {
@@ -110,5 +125,36 @@ impl Ppu {
         } else {
             self.vblank_timer -= 1;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn write_byte_to_vram_works() {
+        let mut ppu = Ppu::default();
+
+        assert_eq!(ppu.vram[0], 0);
+        ppu.write_simple::<u8, 1>(0x6000000, 0xff);
+        assert_eq!(ppu.vram[0], 0xff);
+        assert_eq!(ppu.read_simple::<u8, 1>(0x6000000), 0xff);
+    }
+
+    #[test]
+    fn write_word_to_vram_works() {
+        let mut ppu = Ppu::default();
+
+        assert_eq!(ppu.vram[0], 0);
+        assert_eq!(ppu.vram[1], 0);
+        assert_eq!(ppu.vram[2], 0);
+        assert_eq!(ppu.vram[3], 0);
+        ppu.write_simple::<u32, 4>(0x6000000, 0x01020304);
+        assert_eq!(ppu.vram[0], 4);
+        assert_eq!(ppu.vram[1], 3);
+        assert_eq!(ppu.vram[2], 2);
+        assert_eq!(ppu.vram[3], 1);
+        assert_eq!(ppu.read_simple::<u32, 4>(0x6000000), 0x01020304);
     }
 }

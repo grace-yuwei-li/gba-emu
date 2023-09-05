@@ -91,7 +91,7 @@ impl GbaCore {
     }
 
     pub fn load_rom(&mut self, bytes: &[u8]) {
-        self.bus.load_rom(bytes)
+        self.bus.load_rom(bytes);
     }
 
     pub fn skip_bios(&mut self) {

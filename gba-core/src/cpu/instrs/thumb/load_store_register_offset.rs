@@ -36,7 +36,6 @@ impl ThumbInstruction for Str {
     }
 }
 
-
 impl ThumbInstruction for Strb {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u16) {
         let rm = instruction.bits(6, 8);
@@ -73,7 +72,6 @@ impl ThumbInstruction for Ldr {
         format!("LDR r{}, [r{}, r{}]", rd, rn, rm)
     }
 }
-
 
 impl ThumbInstruction for Ldrb {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u16) {
