@@ -40,7 +40,7 @@ pub struct Bus {
 impl Default for Bus {
     fn default() -> Self {
         Self {
-            bios: include_bytes!("../../bios.bin").clone(),
+            bios: include_bytes!("../../og-bios.bin").clone(),
             sys_rom: [0; 0x4000],
             ew_ram: [0; 0x40000],
             iw_ram: [0; 0x8000],
@@ -54,6 +54,10 @@ impl Default for Bus {
 }
 
 impl Bus {
+    pub fn set_bios(&mut self, bios: &[u8]) {
+        self.bios.clone_from_slice(bios);
+    }
+
     pub fn set_key(&mut self, key: Key, pressed: bool) {
         self.io_map.set_key(key, pressed);
     }

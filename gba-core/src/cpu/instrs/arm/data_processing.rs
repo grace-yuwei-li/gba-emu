@@ -608,7 +608,7 @@ impl ArmInstruction for Tst {
 
 impl ArmInstruction for Teq {
     fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
-        execute_op(cpu, instruction, false, |op1, op2, shift_carry| {
+        execute_op(cpu, instruction, true, |op1, op2, shift_carry| {
             let result = op1 ^ op2;
             (
                 result,

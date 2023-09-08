@@ -37,6 +37,7 @@ enum CPSR {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct CpuDetails {
     regs: Regs,
     mode: Mode,
@@ -161,6 +162,9 @@ impl Cpu {
     }
 
     fn set_reg(&mut self, idx: u32, val: u32) {
+        if idx == 15 && val >= 0xe3000000 {
+            panic!("current pc: {:x}", self.get_reg(15));
+        }
         let mode = &self.get_mode();
         *self.regs.get_mut(idx, mode) = val;
     }
@@ -260,5 +264,111 @@ impl Cpu {
             State::ARM => self.instr_pipeline[0],
             State::Thumb => 0, // TODO: implement this properly
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_div(r0: u32, r1: u32) {
+        let mut cpu = Cpu::default();
+        let mut bus = Bus::default();
+        bus.set_bios(include_bytes!("../../og-bios.bin"));
+
+        cpu.skip_bios();
+        cpu.set_reg_with_mode(0, Mode::System, r0);
+        cpu.set_reg_with_mode(1, Mode::System, r1);
+        // Goto DIV
+        cpu.set_reg(15, 0x3b4);
+        cpu.flush_pipeline();
+
+        while cpu.get_reg(15) - 4 != 0x400 {
+            cpu.tick(&mut bus);
+        }
+
+        let expected0 = (r0 as i32) / (r1 as i32);
+        let expected1 = (r0 as i32) % (r1 as i32);
+        let expected3: u32 = expected0.abs().try_into().unwrap();
+
+        let result0 = cpu.get_reg(0) as i32;
+        let result1 = cpu.get_reg(1) as i32;
+        let result3 = cpu.get_reg(3);
+
+        assert_eq!(result0, expected0, "og div {} by {}", r0, r1);
+        assert_eq!(result1, expected1, "og mod {} by {}", r0, r1);
+        assert_eq!(result3, expected3, "og abs div {} by {}", r0, r1);
+    }
+
+    fn test_div_cultofgba(r0: u32, r1: u32) {
+        let mut cpu = Cpu::default();
+        let mut bus = Bus::default();
+        bus.set_bios(include_bytes!("../../bios.bin"));
+
+        cpu.skip_bios();
+        cpu.set_reg_with_mode(0, Mode::System, r0);
+        cpu.set_reg_with_mode(1, Mode::System, r1);
+        // Goto DIV
+        cpu.set_reg(15, 0x734);
+        cpu.flush_pipeline();
+
+        while cpu.get_reg(15) - 4 != 0x790 {
+            cpu.tick(&mut bus);
+        }
+
+        let expected0 = (r0 as i32) / (r1 as i32);
+        let expected1 = (r0 as i32) % (r1 as i32);
+        let expected3: u32 = expected0.abs().try_into().unwrap();
+
+        let result0 = cpu.get_reg(0) as i32;
+        let result1 = cpu.get_reg(1) as i32;
+        let result3 = cpu.get_reg(3);
+
+        assert_eq!(result0, expected0, "cult div {} by {}", r0, r1);
+        assert_eq!(result1, expected1, "cult mod {} by {}", r0, r1);
+        assert_eq!(result3, expected3, "cult abs div {} by {}", r0, r1);
+    }
+
+    fn print_cpu_regs(cpu: &Cpu) {
+        let regs = cpu.inspect().regs;
+        println!("r0: {} r1: {} r2: {} r3: {} r4: {}", 
+                 regs.get(0, &Mode::System),
+                 regs.get(1, &Mode::System),
+                 regs.get(2, &Mode::System),
+                 regs.get(3, &Mode::System),
+                 regs.get(4, &Mode::System),
+                );
+    }
+
+    #[test]
+    fn test_div_1_by_1() {
+        test_div_cultofgba(1, 1);
+        test_div(1, 1);
+    }
+
+    #[test]
+    fn test_div_2_by_1() {
+        test_div_cultofgba(2, 1);
+        test_div(2, 1);
+    }
+
+    #[test]
+    fn test_div_by_1() {
+        for i in 0..0x10000 {
+            test_div_cultofgba(i, 1);
+            test_div(i, 1);
+        }
+    }
+
+    #[test]
+    fn test_div_by_10() {
+        test_div_cultofgba(123, 10);
+        test_div(123, 10);
+    }
+
+    #[test]
+    fn test_div_by_16() {
+        test_div_cultofgba(0xa000000, 0x10);
+        test_div(0xa000000, 0x10);
     }
 }

@@ -13,20 +13,18 @@ pub fn bg_mode_3(input: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-pub fn bg_mode_4(input: &[u8]) -> Vec<u8> {
+pub fn bg_mode_4(input: &[u8], palette: &[u8]) -> Vec<u8> {
     input
         .iter()
         .flat_map(|&chunk| {
-            if chunk == 0 {
-                [0, 0, 0, 255]
-            } else {
-                [255, 255, 255, 255]
-            }
+            let color_lo = palette[usize::from(2 * chunk)];
+            let color_hi = palette[usize::from(2 * chunk + 1)];
+            decode_color(u16::from_le_bytes([color_lo, color_hi]))
         })
         .collect()
 }
 
-fn decode_color(color: u16) -> [u8; 4] {
+pub fn decode_color(color: u16) -> [u8; 3] {
     let red = color.bits(0, 4) as u8;
     let green = color.bits(5, 9) as u8;
     let blue = color.bits(10, 14) as u8;
@@ -35,6 +33,5 @@ fn decode_color(color: u16) -> [u8; 4] {
         (red << 3) | (red >> 2),
         (green << 3) | (green >> 2),
         (blue << 3) | (blue >> 2),
-        255,
     ]
 }

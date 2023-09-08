@@ -1,6 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export function disassemble_arm(a: number, b: number): void;
+export function disassemble_thumb(a: number, b: number): void;
+export function __wbg_ppudetails_free(a: number): void;
+export function __wbg_get_ppudetails_bg_mode(a: number): number;
+export function __wbg_set_ppudetails_bg_mode(a: number, b: number): void;
+export function ppudetails_screen(a: number): number;
 export function __wbg_gbacore_free(a: number): void;
 export function __wbg_get_gbacore_stopped(a: number): number;
 export function __wbg_set_gbacore_stopped(a: number, b: number): void;
@@ -25,14 +31,8 @@ export function gbacore_remove_thumb_breakpoint(a: number, b: number): void;
 export function gbacore_read_address(a: number, b: number): number;
 export function gbacore_set_key(a: number, b: number, c: number): void;
 export function gbacore_set_stopped(a: number, b: number): void;
-export function disassemble_arm(a: number, b: number): void;
-export function disassemble_thumb(a: number, b: number): void;
 export function __wbg_memorydetails_free(a: number): void;
 export function memorydetails_vram(a: number): number;
-export function __wbg_ppudetails_free(a: number): void;
-export function __wbg_get_ppudetails_bg_mode(a: number): number;
-export function __wbg_set_ppudetails_bg_mode(a: number, b: number): void;
-export function ppudetails_screen(a: number): number;
 export function __wbg_cpudetails_free(a: number): void;
 export function __wbg_get_cpudetails_executing_pc(a: number, b: number): void;
 export function __wbg_set_cpudetails_executing_pc(a: number, b: number, c: number): void;

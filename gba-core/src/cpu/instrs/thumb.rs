@@ -3,6 +3,7 @@ mod add_subtract;
 mod alu_operations;
 mod branch;
 mod high_reg_ops_or_bx;
+mod invalid;
 mod load_address;
 mod load_store_halfword;
 mod load_store_immediate_offset;
@@ -14,28 +15,13 @@ mod multiple_load_store;
 mod pc_relative_load;
 mod push_pop_regs;
 mod sp_relative_ls;
+mod swi;
 
 use crate::{bus::Bus, cpu::Cpu};
-
-use super::arm::TodoInstruction;
 
 pub trait ThumbInstruction {
     fn execute(&self, cpu: &mut Cpu, bus: &mut Bus, instruction: u16);
     fn disassembly(&self, instruction: u16) -> String;
-}
-
-impl ThumbInstruction for TodoInstruction {
-    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, _: u16) {
-        todo!(
-            "TODO: {} at PC: {:x}",
-            self.0,
-            cpu.get_executing_instruction_pc()
-        )
-    }
-
-    fn disassembly(&self, _: u16) -> String {
-        format!("TODO: {}", self.0)
-    }
 }
 
 fn format_mask(instruction: u16, format: u16, mask: u16) -> bool {
@@ -191,9 +177,8 @@ impl Cpu {
             }
             ThumbInstrGroup::SpRelativeLoadStore => sp_relative_ls::decode(instruction),
             ThumbInstrGroup::PushPopRegisters => push_pop_regs::decode(instruction),
-            ThumbInstrGroup::SoftwareInterrupt | ThumbInstrGroup::Invalid => Box::new(
-                TodoInstruction::new_message(format!("{:?} {:016b}", thumb_instr, instruction)),
-            ),
+            ThumbInstrGroup::SoftwareInterrupt => Box::new(swi::Swi),
+            ThumbInstrGroup::Invalid => Box::new(invalid::Invalid),
         }
     }
 }
