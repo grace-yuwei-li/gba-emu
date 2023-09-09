@@ -4,7 +4,6 @@ mod regs;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
-use web_sys::console;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;

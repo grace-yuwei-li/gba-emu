@@ -1,14 +1,12 @@
 mod lcd_regs;
 mod utils;
 
-use std::char;
-
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     ppu::utils::decode_color,
-    utils::{get, set, AddressableBits, sub_overflows}, bus::{Bus, Interrupt, IoMap},
+    utils::{get, set, AddressableBits}, bus::{Interrupt, IoMap},
 };
 
 use lcd_regs::LcdRegs;
