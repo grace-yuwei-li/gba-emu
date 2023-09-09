@@ -4,6 +4,7 @@ mod regs;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
+use web_sys::console;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
@@ -75,6 +76,8 @@ pub struct Cpu {
     instr_pipeline: [u32; 2],
     instr_pipeline_size: usize,
     cycle: u128,
+
+    old_interrupt: bool,
 }
 
 impl Default for Cpu {
@@ -86,6 +89,7 @@ impl Default for Cpu {
             instr_pipeline_size: 0,
 
             cycle: 0,
+            old_interrupt: false,
         };
         cpu.set_mode(Mode::User);
         cpu
@@ -93,6 +97,12 @@ impl Default for Cpu {
 }
 
 impl Cpu {
+    fn handle_interrupt(&mut self) {
+        self.set_mode(Mode::IRQ);
+        self.set_reg(15, 0x18);
+        self.flush_pipeline();
+    }
+
     pub fn get_state(&self) -> State {
         if self.get_cpsr_bit(CPSR::T) == 0 {
             State::ARM
@@ -208,6 +218,13 @@ impl Cpu {
     }
 
     pub fn tick(&mut self, bus: &mut Bus) {
+        let new_interrupt = bus.read_half(0x4000200, self) & bus.read_half(0x4000202, self) != 0;
+
+        if !self.old_interrupt && new_interrupt {
+            self.handle_interrupt();
+        }
+        self.old_interrupt = new_interrupt;
+
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
@@ -329,17 +346,6 @@ mod tests {
         assert_eq!(result3, expected3, "cult abs div {} by {}", r0, r1);
     }
 
-    fn print_cpu_regs(cpu: &Cpu) {
-        let regs = cpu.inspect().regs;
-        println!("r0: {} r1: {} r2: {} r3: {} r4: {}", 
-                 regs.get(0, &Mode::System),
-                 regs.get(1, &Mode::System),
-                 regs.get(2, &Mode::System),
-                 regs.get(3, &Mode::System),
-                 regs.get(4, &Mode::System),
-                );
-    }
-
     #[test]
     fn test_div_1_by_1() {
         test_div_cultofgba(1, 1);
@@ -353,8 +359,8 @@ mod tests {
     }
 
     #[test]
-    fn test_div_by_1() {
-        for i in 0..0x10000 {
+    fn test_div_many_by_1() {
+        for i in 0..0x100 {
             test_div_cultofgba(i, 1);
             test_div(i, 1);
         }

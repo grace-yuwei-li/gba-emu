@@ -1,6 +1,6 @@
 mod io_map;
 
-use io_map::IoMap;
+pub use io_map::{IoMap, Interrupt};
 pub use io_map::Key;
 use num_traits::{AsPrimitive, FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -32,7 +32,7 @@ pub struct Bus {
 
     game_pak_rom: Vec<u8>,
 
-    io_map: IoMap,
+    pub io_map: IoMap,
 
     pub(crate) ppu: Ppu,
 }
@@ -70,7 +70,6 @@ impl Bus {
 
     pub fn load_rom(&mut self, bytes: &[u8]) {
         self.game_pak_rom[..bytes.len()].clone_from_slice(bytes);
-        log::trace!("byte at 0x8000000 is {:#010b}", self.game_pak_rom[0])
     }
 
     fn read_internal<T, const N: usize>(&self, address: u32, cpu: &Cpu) -> T
@@ -93,6 +92,8 @@ impl Bus {
             },
             0x5000000..=0x7ffffff => self.ppu.read_simple::<T, N>(index),
             0x8000000..=0x9ffffff => get(&self.game_pak_rom, index - 0x8000000),
+            // TODO: Cartridge SRAM
+            0xe000000..=0xe00ffff => T::zero(),
             0x1000_0000..=0xffff_ffff => cpu.prefetched_instruction().as_(),
             _ => T::zero(),
         }
@@ -141,7 +142,9 @@ impl Bus {
                 let index = index - 0x8000000;
                 set(&mut self.game_pak_rom, index, value);
             }
-            0x1000_0000..=0xffff_ffff => {}
+            // TODO: Cartridge SRAM
+            0xe000000..=0xe00ffff => {},
+            0x1000_0000..=0xffff_ffff => {},
             _ => todo!("index {:#x} not implemented", index),
         }
     }

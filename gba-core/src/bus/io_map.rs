@@ -1,11 +1,20 @@
 use num_traits::{FromBytes, ToBytes};
 use wasm_bindgen::prelude::wasm_bindgen;
+use web_sys::console;
 
-use crate::utils::{set, AddressableBits};
+use crate::utils::AddressableBits;
+
+pub enum Interrupt {
+    VBlank,
+}
 
 pub struct IoMap {
     mock: [u8; 0x400],
     keyinput: u8,
+    ime: [u8; 4],
+    ie: [u8; 2],
+    // Normally called 'IF', but 'if' is a keyword.
+    pub irq_flags: [u8; 2],
 }
 
 #[wasm_bindgen]
@@ -46,6 +55,21 @@ impl IoMap {
         Self {
             mock: [0; 0x400],
             keyinput: 0xff,
+            ime: [0; 4],
+            ie: [0; 2],
+            irq_flags: [0; 2],
+        }
+    }
+
+    pub fn set_interrupt(&mut self, interrupt: Interrupt, value: bool) {
+        let bit: usize = match interrupt {
+            Interrupt::VBlank => 0
+        };
+
+        if bit < 8 {
+            self.irq_flags[0].mut_bit(bit, value);
+        } else {
+            self.irq_flags[1].mut_bit(bit - 8, value);
         }
     }
 
@@ -65,11 +89,23 @@ impl IoMap {
     }
 
     fn read_byte(&self, index: usize) -> u8 {
+        assert!(index >= 0x4000000);
+        assert!(index < 0x4000400);
+
         match index {
+            0..=0x3ffffff => {
+                unreachable!() 
+            }
             0x4000130 => self.keyinput,
-            _ => {
+            0x4000200..=0x4000201 => self.ie[index - 0x4000200],
+            0x4000202..=0x4000203 => self.irq_flags[index - 0x4000202],
+            0x4000208..=0x400020b => self.ime[index - 0x4000208],
+            0x4000000..=0x40003ff => {
                 let index = index - BASE_ADDR;
                 self.mock[index]
+            }
+            _ => {
+                unreachable!()
             }
         }
     }
@@ -78,6 +114,39 @@ impl IoMap {
     where
         T: ToBytes<Bytes = [u8; N]>,
     {
-        set(&mut self.mock, index - BASE_ADDR, value);
+        for (i, b) in value.to_le_bytes().into_iter().enumerate() {
+            self.write_byte(index + i, b);
+        }
+    }
+
+    fn write_byte(&mut self, index: usize, value: u8) {
+        assert!(index >= 0x4000000);
+        assert!(index < 0x4000400);
+
+        let val_ref: &mut u8 = match index {
+            0..=0x3ffffff => {
+                unreachable!() 
+            }
+            0x4000130 => &mut self.keyinput,
+            0x4000200..=0x4000201 => {
+                if index == 0x4000200 {
+                    console::log_1(&format!("ie low set to {:08b}", value).into());
+                } else {
+                    console::log_1(&format!("ie high set to {:08b}", value).into());
+                }
+                &mut self.ie[index - 0x4000200]
+            },
+            0x4000202..=0x4000203 => &mut self.irq_flags[index - 0x4000202],
+            0x4000208..=0x400020b => &mut self.ime[index - 0x4000208],
+            0x4000000..=0x40003ff => {
+                let index = index - BASE_ADDR;
+                &mut self.mock[index]
+            }
+            _ => {
+                unreachable!()
+            }
+        };
+
+        *val_ref = value;
     }
 }

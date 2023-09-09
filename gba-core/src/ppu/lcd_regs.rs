@@ -6,6 +6,8 @@ pub struct LcdRegs {
     pub green_swap: u16,
     pub dispstat: u16,
     pub vcount: u16,
+    pub bgcnt: [u16; 4],
+    pub bgofs: [u16; 8],
 }
 
 impl LcdRegs {
@@ -15,6 +17,8 @@ impl LcdRegs {
             0x2 => self.green_swap,
             0x4 => self.dispstat,
             0x6 => self.vcount,
+            0x8..=0xf => self.bgcnt[(index - 0x4000008) / 2],
+            0x10..=0x1f => self.bgofs[(index - 0x4000010) / 2],
             _ => 0,
         }
     }
@@ -25,6 +29,8 @@ impl LcdRegs {
             0x2 => Some(&mut self.green_swap),
             0x4 => Some(&mut self.dispstat),
             0x6 => None,
+            0x8..=0xf => Some(&mut self.bgcnt[(index - 0x4000008) / 2]),
+            0x10..=0x1f => Some(&mut self.bgofs[(index - 0x4000010) / 2]),
             _ => None,
         }
     }
@@ -33,7 +39,7 @@ impl LcdRegs {
         if index & 1 == 0 {
             self.read_halfword(index) as u8
         } else {
-            (self.read_halfword(index & 0xfffffffe) >> 8) as u8
+            (self.read_halfword(index - 1) >> 8) as u8
         }
     }
 
@@ -43,7 +49,7 @@ impl LcdRegs {
                 *mem = mem.bits(8, 15) | u16::from(value);
             }
         } else {
-            if let Some(mem) = self.get_halfword_mut(index) {
+            if let Some(mem) = self.get_halfword_mut(index - 1) {
                 *mem = mem.bits(0, 7) | (u16::from(value) << 8);
             }
         }

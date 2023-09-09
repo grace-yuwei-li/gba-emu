@@ -1,12 +1,14 @@
 mod lcd_regs;
 mod utils;
 
+use std::char;
+
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     ppu::utils::decode_color,
-    utils::{get, set, AddressableBits},
+    utils::{get, set, AddressableBits, sub_overflows}, bus::{Bus, Interrupt, IoMap},
 };
 
 use lcd_regs::LcdRegs;
@@ -128,9 +130,59 @@ impl Ppu {
     }
 
     fn get_pixel(&self) -> [u8; 3] {
-        let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
         match self.bg_mode() {
+            0 => {
+                let bg0cnt = self.lcd_regs.bgcnt[0];
+                let character_base_block = usize::from(bg0cnt.bits(2, 3)) * 0x4000;
+                let screen_base_block = usize::from(bg0cnt.bits(8, 12)) * 0x800;
+                let scroll_x = self.lcd_regs.bgofs[0].bits(0, 8);
+                let scroll_y = self.lcd_regs.bgofs[1].bits(0, 8);
+
+                let background_x = self.x + scroll_x;
+                let background_y = self.lcd_regs.vcount + scroll_y;
+
+                let mut tile_x = background_x / 8;
+                let mut tile_y = background_y / 8;
+                let screenblock = self.reg_screenblock(tile_x.into(), tile_y.into());
+                tile_x %= 32;
+                tile_y %= 32;
+
+                let tile_index = usize::from(tile_x + tile_y * 32);
+                let tm_data = u16::from_le_bytes([
+                    self.vram[screen_base_block + 0x800 * screenblock + tile_index * 2],
+                    self.vram[screen_base_block + 0x800 * screenblock + tile_index * 2 + 1]
+                ]);
+
+                let flip_vertical = tm_data.bit(11) == 1;
+                let flip_horizontal = tm_data.bit(10) == 1;
+
+                let mut subpixel_x = usize::from(background_x % 8);
+                let mut subpixel_y = usize::from(background_y % 8);
+                if flip_horizontal {
+                    subpixel_x = 7 - subpixel_x;
+                }
+                if flip_vertical {
+                    subpixel_y = 7 - subpixel_y;
+                }
+
+                let ts_index: usize = usize::from(tm_data.bits(0, 9));
+                let ts_byte = self.vram[character_base_block + 32 * ts_index + 4 * subpixel_y + subpixel_x / 2];
+
+                let palette_offset = if subpixel_x % 2 == 0 {
+                    ts_byte.bits(0, 3)
+                } else {
+                    ts_byte.bits(4, 7)
+                };
+
+                let palette_bank = tm_data.bits(12, 15);
+                let color = self.palette_lookup(palette_offset.into(), palette_bank.into());
+
+                color
+            }
+            1 => [128, 128, 0],
+            2 => [0, 0, 255],
             3 => {
+                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
                 let color = u16::from_le_bytes([
                     self.vram[2 * pixel_index],
                     self.vram[2 * pixel_index + 1],
@@ -138,6 +190,7 @@ impl Ppu {
                 decode_color(color)
             }
             4 => {
+                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
                 let bg = if self.lcd_regs.dispcnt.bit(4) == 0 {
                     &self.vram[0..usize::from(SCREEN_AREA)]
                 } else {
@@ -156,6 +209,22 @@ impl Ppu {
         }
     }
 
+    fn reg_screenblock(&self, tile_x: usize, tile_y: usize) -> usize {
+        match self.lcd_regs.bgcnt[0].bits(14, 15) {
+            0 => 0,
+            1 => (tile_x % 64) / 32,
+            2 => (tile_y % 64) / 32,
+            3 => ((tile_y % 64) / 32) * 2 + (tile_x % 64)/ 32,
+            _ => unreachable!(),
+        }
+    }
+
+    fn palette_lookup(&self, offset: usize, palette_bank: usize) -> [u8; 3] {
+        let index = palette_bank * 32 + 2 * offset;
+        let color = u16::from_le_bytes(self.bg_obj_palette[index ..= index + 1].try_into().unwrap());
+        decode_color(color.into())
+    }
+
     pub fn inspect(&self) -> PpuDetails {
         PpuDetails {
             bg_mode: self.bg_mode(),
@@ -170,7 +239,7 @@ impl Ppu {
             .collect()
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, io_map: &mut IoMap) {
         if self.pixel_timer == 0 {
             self.pixel_timer = 3;
 
@@ -204,6 +273,7 @@ impl Ppu {
                 // V-Blank starts and H-Blank ends
                 self.lcd_regs.dispstat.mut_bit(DISPSTAT_V_BLANK, true);
                 self.lcd_regs.dispstat.mut_bit(DISPSTAT_H_BLANK, false);
+                io_map.set_interrupt(Interrupt::VBlank, true);
             }
         } else {
             self.pixel_timer -= 1;

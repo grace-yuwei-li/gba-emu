@@ -73,7 +73,7 @@ impl GbaCore {
 
         if !self.stopped {
             self.cpu.tick(&mut self.bus);
-            self.bus.ppu.tick();
+            self.bus.ppu.tick(&mut self.bus.io_map);
         }
     }
 
