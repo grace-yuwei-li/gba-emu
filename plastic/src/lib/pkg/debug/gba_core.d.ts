@@ -170,8 +170,16 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly __wbg_memorydetails_free: (a: number) => void;
-  readonly memorydetails_vram: (a: number) => number;
+  readonly __wbg_cpudetails_free: (a: number) => void;
+  readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
+  readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
+  readonly cpudetails_reg: (a: number, b: number, c: number, d: number) => void;
+  readonly cpudetails_cpsr: (a: number) => number;
+  readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
+  readonly cpudetails_mode: (a: number) => number;
+  readonly cpudetails_pc: (a: number) => number;
+  readonly disassemble_arm: (a: number, b: number) => void;
+  readonly disassemble_thumb: (a: number, b: number) => void;
   readonly __wbg_gbacore_free: (a: number) => void;
   readonly __wbg_get_gbacore_stopped: (a: number) => number;
   readonly __wbg_set_gbacore_stopped: (a: number, b: number) => void;
@@ -196,20 +204,12 @@ export interface InitOutput {
   readonly gbacore_read_address: (a: number, b: number) => number;
   readonly gbacore_set_key: (a: number, b: number, c: number) => void;
   readonly gbacore_set_stopped: (a: number, b: number) => void;
-  readonly disassemble_arm: (a: number, b: number) => void;
-  readonly disassemble_thumb: (a: number, b: number) => void;
+  readonly __wbg_memorydetails_free: (a: number) => void;
+  readonly memorydetails_vram: (a: number) => number;
   readonly __wbg_ppudetails_free: (a: number) => void;
   readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
   readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
   readonly ppudetails_screen: (a: number) => number;
-  readonly __wbg_cpudetails_free: (a: number) => void;
-  readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
-  readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
-  readonly cpudetails_reg: (a: number, b: number, c: number, d: number) => void;
-  readonly cpudetails_cpsr: (a: number) => number;
-  readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
-  readonly cpudetails_mode: (a: number) => number;
-  readonly cpudetails_pc: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-        "wasm": "echo 'recompiling wasm' && wasm-pack build ../gba-core --target web && mkdir -p ./src/lib/pkg/debug/ && cp -r ../gba-core/pkg/* ./src/lib/pkg/debug/",
+        "wasm": "wasm-pack build ../gba-core --target web && mkdir -p ./src/lib/pkg/debug/ && cp -r ../gba-core/pkg/* ./src/lib/pkg/debug/",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
