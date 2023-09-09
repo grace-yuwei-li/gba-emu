@@ -24,6 +24,12 @@ pub trait ThumbInstruction {
     fn disassembly(&self, instruction: u16) -> String;
 }
 
+impl std::fmt::Debug for dyn ThumbInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ThumbInstruction")
+    }
+}
+
 fn format_mask(instruction: u16, format: u16, mask: u16) -> bool {
     instruction & mask == format
 }
@@ -148,7 +154,7 @@ impl ThumbInstrGroup {
 }
 
 impl Cpu {
-    pub(super) fn decode_thumb(instruction: u16) -> Box<dyn ThumbInstruction> {
+    pub fn decode_thumb(instruction: u16) -> Box<dyn ThumbInstruction> {
         let thumb_instr = ThumbInstrGroup::decode(instruction);
         match thumb_instr {
             ThumbInstrGroup::LoadStoreHalfword => load_store_halfword::decode(instruction),

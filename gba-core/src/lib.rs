@@ -5,6 +5,7 @@ mod utils;
 
 use std::collections::HashSet;
 
+use cpu::generate_luts;
 pub use utils::js::*;
 pub use utils::logging;
 
@@ -12,7 +13,7 @@ use ppu::PpuDetails;
 use wasm_bindgen::prelude::*;
 
 use bus::Bus;
-use cpu::Cpu;
+use cpu::{Cpu, ArmInstruction, ThumbInstruction};
 
 use crate::cpu::CpuDetails;
 use crate::cpu::State;
@@ -22,6 +23,9 @@ pub struct GbaCore {
     cpu: Cpu,
     bus: Bus,
 
+    arm_lut: [Box<dyn ArmInstruction>; 0x1000],
+    thumb_lut: [Box<dyn ThumbInstruction>; 0x1000],
+
     pub stopped: bool,
     debugger_enabled: bool,
     arm_breakpoints: HashSet<u32>,
@@ -30,9 +34,14 @@ pub struct GbaCore {
 
 impl Default for GbaCore {
     fn default() -> Self {
+        let (arm_lut, thumb_lut) = generate_luts();
+
         Self {
             cpu: Cpu::default(),
             bus: Bus::default(),
+
+            arm_lut,
+            thumb_lut,
 
             stopped: false,
             debugger_enabled: true,
@@ -72,7 +81,7 @@ impl GbaCore {
         }
 
         if !self.stopped {
-            self.cpu.tick(&mut self.bus);
+            self.cpu.tick(&mut self.bus, &self.arm_lut, &self.thumb_lut);
             self.bus.ppu.tick(&mut self.bus.io_map);
         }
     }

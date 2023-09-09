@@ -18,6 +18,12 @@ pub trait ArmInstruction {
     fn disassembly(&self, instruction: u32) -> String;
 }
 
+impl std::fmt::Debug for dyn ArmInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ArmInstruction")
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum MetaInstr {
     DataProcessing,
@@ -253,7 +259,7 @@ impl Cpu {
         }
     }
 
-    pub(super) fn decode_arm(instruction: u32) -> Box<dyn ArmInstruction> {
+    pub fn decode_arm(instruction: u32) -> Box<dyn ArmInstruction> {
         MetaInstr::decode_arm(instruction)
     }
 }

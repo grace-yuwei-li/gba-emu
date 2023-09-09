@@ -8,7 +8,12 @@ use wasm_bindgen::JsValue;
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
 
+pub use self::instrs::arm::ArmInstruction;
+pub use self::instrs::thumb::ThumbInstruction;
 use self::regs::Regs;
+
+type ArmLut = [Box<dyn ArmInstruction>; 0x1000];
+type ThumbLut = [Box<dyn ThumbInstruction>; 0x1000];
 
 #[derive(PartialEq, Eq)]
 pub enum State {
@@ -75,12 +80,12 @@ pub struct Cpu {
     instr_pipeline: [u32; 2],
     instr_pipeline_size: usize,
     cycle: u128,
-
     old_interrupt: bool,
 }
 
 impl Default for Cpu {
     fn default() -> Self {
+
         let mut cpu = Self {
             regs: Regs::default(),
 
@@ -88,6 +93,7 @@ impl Default for Cpu {
             instr_pipeline_size: 0,
 
             cycle: 0,
+
             old_interrupt: false,
         };
         cpu.set_mode(Mode::User);
@@ -216,7 +222,7 @@ impl Cpu {
         //self.mode = Mode::System;
     }
 
-    pub fn tick(&mut self, bus: &mut Bus) {
+    pub fn tick(&mut self, bus: &mut Bus, arm_lut: &ArmLut, thumb_lut: &ThumbLut) {
         let new_interrupt = bus.read_half(0x4000200, self) & bus.read_half(0x4000202, self) != 0;
 
         if !self.old_interrupt && new_interrupt {
@@ -241,7 +247,7 @@ impl Cpu {
         }
 
         if self.instr_pipeline_size == 2 {
-            self.execute(bus, instruction);
+            self.execute(bus, instruction, arm_lut, thumb_lut);
         } else {
             self.instr_pipeline_size += 1;
         }
@@ -283,6 +289,22 @@ impl Cpu {
     }
 }
 
+pub fn generate_luts() -> (ArmLut, ThumbLut) {
+    let arm_lut = (0u32 .. 0x1000).into_iter().map(|val| {
+        let low = val.bits(0, 3);
+        let high = val.bits(4, 11);
+        let instruction = (high << 20) | (low << 4);
+        Cpu::decode_arm(instruction)
+    }).collect::<Vec<Box<dyn ArmInstruction>>>().try_into().unwrap();
+
+    let thumb_lut = (0u16 .. 0x1000).into_iter().map(|val| {
+        let instruction = val << 4;
+        Cpu::decode_thumb(instruction)
+    }).collect::<Vec<Box<dyn ThumbInstruction>>>().try_into().unwrap();
+
+    (arm_lut, thumb_lut)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,6 +312,7 @@ mod tests {
     fn test_div(r0: u32, r1: u32) {
         let mut cpu = Cpu::default();
         let mut bus = Bus::default();
+        let (arm_lut, thumb_lut) = generate_luts();
         bus.set_bios(include_bytes!("../../og-bios.bin"));
 
         cpu.skip_bios();
@@ -300,7 +323,7 @@ mod tests {
         cpu.flush_pipeline();
 
         while cpu.get_reg(15) - 4 != 0x400 {
-            cpu.tick(&mut bus);
+            cpu.tick(&mut bus, &arm_lut, &thumb_lut);
         }
 
         let expected0 = (r0 as i32) / (r1 as i32);
@@ -319,6 +342,7 @@ mod tests {
     fn test_div_cultofgba(r0: u32, r1: u32) {
         let mut cpu = Cpu::default();
         let mut bus = Bus::default();
+        let (arm_lut, thumb_lut) = generate_luts();
         bus.set_bios(include_bytes!("../../bios.bin"));
 
         cpu.skip_bios();
@@ -329,7 +353,7 @@ mod tests {
         cpu.flush_pipeline();
 
         while cpu.get_reg(15) - 4 != 0x790 {
-            cpu.tick(&mut bus);
+            cpu.tick(&mut bus, &arm_lut, &thumb_lut);
         }
 
         let expected0 = (r0 as i32) / (r1 as i32);

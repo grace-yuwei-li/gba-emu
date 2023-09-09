@@ -2,24 +2,25 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{bus::Bus, utils::AddressableBits};
 
-use super::{Cpu, State};
+use super::{Cpu, State, ArmLut, ThumbLut};
 
 pub mod arm;
 pub mod thumb;
 
 impl Cpu {
-    pub fn execute(&mut self, bus: &mut Bus, instruction: u32) {
+    pub fn execute(&mut self, bus: &mut Bus, instruction: u32, arm_lut: &ArmLut, thumb_lut: &ThumbLut) {
         match self.get_state() {
             State::ARM => {
                 if !self.check_cond(instruction.bits(28, 31)) {
                     return;
                 }
-
-                let instr_type = Self::decode_arm(instruction);
-                instr_type.execute(self, bus, instruction);
+                let index = instruction.bits(20, 27) << 4 | instruction.bits(4, 7);
+                let arm_instruction = &arm_lut[usize::try_from(index).unwrap()];
+                arm_instruction.execute(self, bus, instruction);
             }
             State::Thumb => {
-                let thumb_instruction = Self::decode_thumb(instruction as u16);
+                let index = instruction.bits(4, 15);
+                let thumb_instruction = &thumb_lut[usize::try_from(index).unwrap()];
                 thumb_instruction.execute(self, bus, instruction as u16);
             }
         }
