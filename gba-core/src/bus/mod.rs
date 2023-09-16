@@ -81,7 +81,7 @@ impl Bus {
         assert_eq!(address % u32::try_from(N).unwrap(), 0);
         let index: usize = address.try_into().unwrap();
         match index {
-            0x0..=0x3ffc => get(&self.bios, index),
+            0x0000000..=0x1ffffff => get(&self.bios, index & 0x3ffc),
             0x2000000..=0x2ffffff => get(&self.ew_ram, index & 0x3ffff),
             0x3000000..=0x3ffffff => get(&self.iw_ram, index & 0x7fff),
             0x4000000..=0x4ffffff => match index & 0x3ff {
@@ -129,6 +129,8 @@ impl Bus {
         assert_eq!(index % u32::try_from(N).unwrap(), 0);
         let index: usize = index.try_into().unwrap();
         match index {
+            // Don't write to bios.
+            0x0000000..=0x1ffffff => {},
             0x2000000..=0x2ffffff => set(&mut self.ew_ram, index & 0x3ffff, value),
             0x3000000..=0x3ffffff => set(&mut self.iw_ram, index & 0x7fff, value),
             0x4000000..=0x4ffffff => match index & 0x3ff {

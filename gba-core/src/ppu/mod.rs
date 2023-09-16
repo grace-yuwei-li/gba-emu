@@ -1,5 +1,6 @@
 mod lcd_regs;
 mod utils;
+mod masked_byte;
 
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -78,9 +79,8 @@ impl Ppu {
         match index {
             0x5000000..=0x50003ff => get(&self.bg_obj_palette, index - 0x5000000),
             0x5000400..=0x5ffffff => T::zero(),
-            0x6000000..=0x6ffffff => get(&self.vram, index - 0x6000000),
-            0x7000000..=0x70003ff => get(&self.oam, index - 0x7000000),
-            0x7000400..=0x7ffffff => T::zero(),
+            0x6000000..=0x6ffffff => get(&self.vram, index % 0x18000),
+            0x7000000..=0x7ffffff => get(&self.oam, index % 0x400),
             _ => unreachable!("{:x}", index),
         }
     }
@@ -93,9 +93,9 @@ impl Ppu {
             0x5000000..=0x50003ff => set(&mut self.bg_obj_palette, index - 0x5000000, value),
             0x5000400..=0x5ffffff => {}
             0x6000000..=0x6ffffff => {
-                set(&mut self.vram, index - 0x6000000, value);
+                set(&mut self.vram, index % 0x18000, value);
             }
-            0x7000000..=0x70003ff => set(&mut self.oam, index - 0x7000000, value),
+            0x7000000..=0x7ffffff => set(&mut self.oam, index % 0x400, value),
             _ => unreachable!("{:x}", index),
         }
     }
@@ -124,20 +124,20 @@ impl Ppu {
     }
 
     fn bg_mode(&self) -> u8 {
-        self.lcd_regs.dispcnt.bits(0, 2) as u8
+        self.lcd_regs.dispcnt.read().bits(0, 2) as u8
     }
 
     fn get_pixel(&self) -> [u8; 3] {
         match self.bg_mode() {
             0 => {
-                let bg0cnt = self.lcd_regs.bgcnt[0];
+                let bg0cnt: u16 = self.read_lcd_io_regs(0x4000008);
                 let character_base_block = usize::from(bg0cnt.bits(2, 3)) * 0x4000;
                 let screen_base_block = usize::from(bg0cnt.bits(8, 12)) * 0x800;
-                let scroll_x = self.lcd_regs.bgofs[0].bits(0, 8);
-                let scroll_y = self.lcd_regs.bgofs[1].bits(0, 8);
+                let scroll_x: u16 = self.read_lcd_io_regs(0x4000010);
+                let scroll_y: u16 = self.read_lcd_io_regs(0x4000012);
 
                 let background_x = self.x + scroll_x;
-                let background_y = self.lcd_regs.vcount + scroll_y;
+                let background_y = self.lcd_regs.vcount.read() + scroll_y;
 
                 let mut tile_x = background_x / 8;
                 let mut tile_y = background_y / 8;
@@ -180,7 +180,7 @@ impl Ppu {
             1 => [128, 128, 0],
             2 => [0, 0, 255],
             3 => {
-                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
+                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
                 let color = u16::from_le_bytes([
                     self.vram[2 * pixel_index],
                     self.vram[2 * pixel_index + 1],
@@ -188,8 +188,8 @@ impl Ppu {
                 decode_color(color)
             }
             4 => {
-                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
-                let bg = if self.lcd_regs.dispcnt.bit(4) == 0 {
+                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
+                let bg = if self.lcd_regs.dispcnt.read().bit(4) == 0 {
                     &self.vram[0..usize::from(SCREEN_AREA)]
                 } else {
                     &self.vram[usize::from(SCREEN_AREA)..usize::from(SCREEN_AREA) * 2]
@@ -208,7 +208,7 @@ impl Ppu {
     }
 
     fn reg_screenblock(&self, tile_x: usize, tile_y: usize) -> usize {
-        match self.lcd_regs.bgcnt[0].bits(14, 15) {
+        match self.lcd_regs.bgcnt[0].read().bits(14, 15) {
             0 => 0,
             1 => (tile_x % 64) / 32,
             2 => (tile_y % 64) / 32,
@@ -242,36 +242,36 @@ impl Ppu {
             self.pixel_timer = 3;
 
             // Draw pixel
-            if self.x < SCREEN_WIDTH && self.lcd_regs.vcount < SCREEN_HEIGHT {
+            if self.x < SCREEN_WIDTH && self.lcd_regs.vcount.read() < SCREEN_HEIGHT {
                 let pixel = self.get_pixel();
-                let pixel_index = usize::from(self.x + self.lcd_regs.vcount * SCREEN_WIDTH);
+                let pixel_index = usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
                 self.screen[3 * pixel_index..3 * pixel_index + 3].clone_from_slice(&pixel);
             }
 
             self.x += 1;
             if self.x == SCREEN_WIDTH + H_BLANK_WIDTH {
                 self.x = 0;
-                self.lcd_regs.vcount += 1;
-                if self.lcd_regs.vcount == SCREEN_HEIGHT + V_BLANK_HEIGHT {
+                self.lcd_regs.vcount.write( self.lcd_regs.vcount.read() + 1);
+                if self.lcd_regs.vcount.read() == SCREEN_HEIGHT + V_BLANK_HEIGHT {
                     // New frame
-                    self.lcd_regs.vcount = 0;
+                    self.lcd_regs.vcount.write(0);
                 }
             }
 
-            if self.lcd_regs.vcount == 0 && self.x == 0 {
+            if self.lcd_regs.vcount.read() == 0 && self.x == 0 {
                 // V-Draw starts and V-Blank ends
-                self.lcd_regs.dispstat.mut_bit(DISPSTAT_V_BLANK, false);
-            } else if self.lcd_regs.vcount < SCREEN_HEIGHT && self.x == 0 {
+                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_V_BLANK, false));
+            } else if self.lcd_regs.vcount.read() < SCREEN_HEIGHT && self.x == 0 {
                 // V-Draw starts and H-Blank ends
-                self.lcd_regs.dispstat.mut_bit(DISPSTAT_H_BLANK, false);
-            } else if self.lcd_regs.vcount < SCREEN_HEIGHT && self.x == SCREEN_WIDTH {
+                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, false));
+            } else if self.lcd_regs.vcount.read() < SCREEN_HEIGHT && self.x == SCREEN_WIDTH {
                 // H-Blank starts and V-Draw ends
-                self.lcd_regs.dispstat.mut_bit(DISPSTAT_H_BLANK, true);
-            } else if self.lcd_regs.vcount == SCREEN_HEIGHT {
+                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, true));
+            } else if self.lcd_regs.vcount.read() == SCREEN_HEIGHT {
                 // V-Blank starts and H-Blank ends
-                self.lcd_regs.dispstat.mut_bit(DISPSTAT_V_BLANK, true);
-                self.lcd_regs.dispstat.mut_bit(DISPSTAT_H_BLANK, false);
-                io_map.set_interrupt(Interrupt::VBlank, true);
+                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_V_BLANK, true));
+                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, false));
+                //io_map.set_interrupt(Interrupt::VBlank, true);
             }
         } else {
             self.pixel_timer -= 1;

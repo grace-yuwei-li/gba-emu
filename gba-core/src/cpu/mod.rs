@@ -125,7 +125,7 @@ impl Cpu {
 
     fn get_mode(&self) -> Mode {
         // highest bit is always set to 1 - TODO: verify this claim
-        match self.regs.cpsr.bits(0, 4) {
+        match self.regs.cpsr.bits(0, 4) | 0x10 {
             0b10000 => Mode::User,
             0b10001 => Mode::FIQ,
             0b10010 => Mode::IRQ,
@@ -177,9 +177,6 @@ impl Cpu {
     }
 
     fn set_reg(&mut self, idx: u32, val: u32) {
-        if idx == 15 && val >= 0xe3000000 {
-            panic!("current pc: {:x}", self.get_reg(15));
-        }
         let mode = &self.get_mode();
         *self.regs.get_mut(idx, mode) = val;
     }

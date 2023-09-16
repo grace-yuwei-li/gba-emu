@@ -232,7 +232,7 @@ impl Cpu {
                     || (self.get_cpsr_bit(CPSR::N) != self.get_cpsr_bit(CPSR::V))
             }
             0b1110 => true,
-            0b1111 => unimplemented!(),
+            0b1111 => false, // Undefined behaviour
             _ => unreachable!(),
         }
     }
