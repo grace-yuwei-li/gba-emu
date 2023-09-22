@@ -44,15 +44,15 @@ impl Reg {
 
     pub fn write(&mut self, value: u16) {
         match self {
-            Reg::Placeholder => {},
+            Reg::Placeholder => {}
             Reg::Simple(_) => *self = Reg::Simple(value),
             Reg::Masked(m) => m.write(value),
         }
     }
-    
+
     pub fn force_write(&mut self, value: u16) {
         match self {
-            Reg::Masked(m) => m.force_write(value),
+            Reg::Masked(ref mut m) => m.force_write(value),
             _ => panic!("Force write only works on masked"),
         }
     }
@@ -113,10 +113,10 @@ impl LcdRegs {
     pub fn write_byte(&mut self, index: usize, value: u8) {
         if index & 1 == 0 {
             let mem = self.get_halfword_mut(index);
-            mem.write( mem.read().bits(8, 15) | u16::from(value) );
+            mem.write(mem.read().bits(8, 15) | u16::from(value));
         } else {
             let mem = self.get_halfword_mut(index - 1);
-            mem.write( mem.read().bits(0, 7) | (u16::from(value) << 8) );
+            mem.write(mem.read().bits(0, 7) | (u16::from(value) << 8));
         }
     }
 }

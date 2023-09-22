@@ -3,14 +3,14 @@ use std::ops::BitAnd;
 use super::lcd_regs::LcdReg;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Masked<T> 
-{
+pub struct Masked<T> {
     value: T,
     mask: T,
 }
 
-impl<T> Masked<T> 
-where T: Default + BitAnd<Output = T>
+impl<T> Masked<T>
+where
+    T: Default + BitAnd<Output = T>,
 {
     pub fn new(mask: T) -> Self {
         Self {

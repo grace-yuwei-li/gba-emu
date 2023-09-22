@@ -1,7 +1,7 @@
 mod io_map;
 
-pub use io_map::{IoMap, Interrupt};
 pub use io_map::Key;
+pub use io_map::{Interrupt, IoMap};
 use num_traits::{AsPrimitive, FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -26,7 +26,6 @@ impl MemoryDetails {
 
 pub struct Bus {
     bios: [u8; 0x4000],
-    sys_rom: [u8; 0x4000],
     ew_ram: [u8; 0x40000],
     iw_ram: [u8; 0x8000],
 
@@ -41,7 +40,6 @@ impl Default for Bus {
     fn default() -> Self {
         Self {
             bios: include_bytes!("../../og-bios.bin").clone(),
-            sys_rom: [0; 0x4000],
             ew_ram: [0; 0x40000],
             iw_ram: [0; 0x8000],
 
@@ -92,6 +90,10 @@ impl Bus {
             },
             0x5000000..=0x7ffffff => self.ppu.read_simple::<T, N>(index),
             0x8000000..=0x9ffffff => get(&self.game_pak_rom, index - 0x8000000),
+            // There's some timing stuff about these mirrored game pak sections but I'm ignoring
+            // that for now.
+            0xa000000..=0xbffffff => get(&self.game_pak_rom, index - 0xa000000),
+            0xc000000..=0xdffffff => get(&self.game_pak_rom, index - 0xc000000),
             // TODO: Cartridge SRAM
             0xe000000..=0xe00ffff => T::zero(),
             0x1000_0000..=0xffff_ffff => cpu.prefetched_instruction().as_(),
@@ -130,7 +132,7 @@ impl Bus {
         let index: usize = index.try_into().unwrap();
         match index {
             // Don't write to bios.
-            0x0000000..=0x1ffffff => {},
+            0x0000000..=0x1ffffff => {}
             0x2000000..=0x2ffffff => set(&mut self.ew_ram, index & 0x3ffff, value),
             0x3000000..=0x3ffffff => set(&mut self.iw_ram, index & 0x7fff, value),
             0x4000000..=0x4ffffff => match index & 0x3ff {
@@ -140,13 +142,11 @@ impl Bus {
                 _ => unreachable!(),
             },
             0x5000000..=0x7ffffff => self.ppu.write_simple(index, value),
-            0x8000000..=0x9ffffff => {
-                let index = index - 0x8000000;
-                set(&mut self.game_pak_rom, index, value);
-            }
+            // Cartridge ROM - read only?
+            0x8000000..=0xdffffff => { }
             // TODO: Cartridge SRAM
-            0xe000000..=0xe00ffff => {},
-            0x1000_0000..=0xffff_ffff => {},
+            0xe000000..=0xe00ffff => {}
+            0x1000_0000..=0xffff_ffff => {}
             _ => todo!("index {:#x} not implemented", index),
         }
     }

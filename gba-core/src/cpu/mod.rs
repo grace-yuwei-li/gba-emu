@@ -1,9 +1,12 @@
 mod instrs;
 mod regs;
 
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
+use web_sys::console;
 
 use crate::bus::Bus;
 use crate::utils::AddressableBits;
@@ -81,11 +84,12 @@ pub struct Cpu {
     instr_pipeline_size: usize,
     cycle: u128,
     old_interrupt: bool,
+
+    pc_history: VecDeque<u32>,
 }
 
 impl Default for Cpu {
     fn default() -> Self {
-
         let mut cpu = Self {
             regs: Regs::default(),
 
@@ -95,6 +99,8 @@ impl Default for Cpu {
             cycle: 0,
 
             old_interrupt: false,
+
+            pc_history: VecDeque::new(),
         };
         cpu.set_mode(Mode::User);
         cpu
@@ -102,8 +108,20 @@ impl Default for Cpu {
 }
 
 impl Cpu {
+    pub fn pc_history(&self) -> Vec<u32> {
+        self.pc_history.iter().copied().collect()
+    }
+
     fn handle_interrupt(&mut self) {
+        self.set_reg_with_mode(14, Mode::IRQ, self.get_executing_instruction_pc() + 4);
+        self.regs.spsr_irq = self.regs.cpsr;
+
         self.set_mode(Mode::IRQ);
+        self.set_state(State::ARM);
+
+        // Disable normal interrupts
+        self.regs.cpsr.mut_bit(7, true);
+
         self.set_reg(15, 0x18);
         self.flush_pipeline();
     }
@@ -134,8 +152,9 @@ impl Cpu {
             0b11011 => Mode::Undefined,
             0b11111 => Mode::System,
             _ => panic!(
-                "undefined behaviour, mode {:05b}",
-                self.regs.cpsr.bits(0, 4)
+                "undefined behaviour, mode {:05b} PC:{:x}",
+                self.regs.cpsr.bits(0, 4),
+                self.regs.pc(),
             ),
         }
     }
@@ -150,7 +169,7 @@ impl Cpu {
             Mode::Undefined => 0b11011,
             Mode::System => 0b11111,
         };
-        self.regs.cpsr = self.regs.cpsr.bits(5, 31) | val;
+        self.regs.cpsr = self.regs.cpsr & !(0x1f) | val;
     }
 
     fn get_reg(&self, idx: u32) -> u32 {
@@ -220,22 +239,29 @@ impl Cpu {
     }
 
     pub fn tick(&mut self, bus: &mut Bus, arm_lut: &ArmLut, thumb_lut: &ThumbLut) {
-        let new_interrupt = bus.read_half(0x4000200, self) & bus.read_half(0x4000202, self) != 0;
+        if self.instr_pipeline_size == 2 {
+            self.pc_history
+                .push_front(self.get_executing_instruction_pc());
+            if self.pc_history.len() > 100 {
+                self.pc_history.pop_back();
+            }
+        }
+
+        let ime_flag = bus.read_byte(0x4000208, self);
+        let ie_flag = bus.read_half(0x4000200, self);
+        let if_flag = bus.read_half(0x4000202, self);
+
+        let new_interrupt = ime_flag.bit(0) == 1 && ie_flag & if_flag != 0;
 
         if !self.old_interrupt && new_interrupt {
             self.handle_interrupt();
+            console::log_1(&format!("handling interrupt {:b}", ie_flag & if_flag).into());
         }
         self.old_interrupt = new_interrupt;
 
         let instruction = self.instr_pipeline[0];
 
         self.instr_pipeline[0] = self.instr_pipeline[1];
-        log::trace!(
-            "Cycle {} PC {:x} read value {:x}",
-            self.cycle,
-            self.regs.pc(),
-            bus.read(self.regs.pc(), self)
-        );
         self.instr_pipeline[1] = bus.read(self.regs.pc(), self);
 
         match self.get_state() {
@@ -287,17 +313,27 @@ impl Cpu {
 }
 
 pub fn generate_luts() -> (ArmLut, ThumbLut) {
-    let arm_lut = (0u32 .. 0x1000).into_iter().map(|val| {
-        let low = val.bits(0, 3);
-        let high = val.bits(4, 11);
-        let instruction = (high << 20) | (low << 4);
-        Cpu::decode_arm(instruction)
-    }).collect::<Vec<Box<dyn ArmInstruction>>>().try_into().unwrap();
+    let arm_lut = (0u32..0x1000)
+        .into_iter()
+        .map(|val| {
+            let low = val.bits(0, 3);
+            let high = val.bits(4, 11);
+            let instruction = (high << 20) | (low << 4);
+            Cpu::decode_arm(instruction)
+        })
+        .collect::<Vec<Box<dyn ArmInstruction>>>()
+        .try_into()
+        .unwrap();
 
-    let thumb_lut = (0u16 .. 0x1000).into_iter().map(|val| {
-        let instruction = val << 4;
-        Cpu::decode_thumb(instruction)
-    }).collect::<Vec<Box<dyn ThumbInstruction>>>().try_into().unwrap();
+    let thumb_lut = (0u16..0x1000)
+        .into_iter()
+        .map(|val| {
+            let instruction = val << 4;
+            Cpu::decode_thumb(instruction)
+        })
+        .collect::<Vec<Box<dyn ThumbInstruction>>>()
+        .try_into()
+        .unwrap();
 
     (arm_lut, thumb_lut)
 }

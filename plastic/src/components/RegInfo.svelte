@@ -33,6 +33,10 @@
 				return 8 <= index && index <= 14;
 		}
 	};
+
+    $: ie_reg = $gba?.gba.ie_reg();
+    $: if_reg = $gba?.gba.if_reg();
+    $: ime_reg = $gba?.gba.read_halfword(0x4000208);
 </script>
 
 <table>
@@ -75,8 +79,8 @@
 			<th>CPSR</th>
 			{#each Object.values(Mode) as mode, i (i)}
 				<td>
-					{#if mode === Mode.User && cpuDetails }
-                        <Psr value={cpuDetails.cpsr()} />
+					{#if mode === Mode.User && cpuDetails !== undefined }
+                        {cpuDetails.cpsr().toString(16)}
 					{:else}
 						-
 					{/if}
@@ -87,8 +91,8 @@
 			<th>SPSR</th>
 			{#each Object.values(Mode) as mode, i (i)}
 				<td>
-                    {#if mode !== Mode.System && mode !== Mode.User && cpuDetails?.spsr({type: mode})}
-                        <Psr value={cpuDetails.spsr({type: mode}) ?? 0} />
+                    {#if mode !== Mode.System && mode !== Mode.User && cpuDetails !== undefined}
+                        {(cpuDetails.spsr({type: mode}) ?? 0).toString(16)}
                     {:else}
                         -
                     {/if}
@@ -96,6 +100,20 @@
 			{/each}
 		</tr>
 	</tbody>
+</table>
+<table>
+    <tr>
+        <th>IE</th>
+        <td>{ie_reg}</td>
+    </tr>
+    <tr>
+        <th>IF</th>
+        <td>{if_reg}</td>
+    </tr>
+    <tr>
+        <th>IME</th>
+        <td>{ime_reg}</td>
+    </tr>
 </table>
 
 <style>

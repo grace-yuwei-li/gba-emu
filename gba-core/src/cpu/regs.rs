@@ -19,19 +19,21 @@ pub struct Regs {
 
 impl Regs {
     pub fn get(&self, reg: u32, mode: &Mode) -> u32 {
+        assert!(reg <= 15);
         let reg: usize = reg.try_into().unwrap();
         match *mode {
             Mode::User | Mode::System => self.sys_user[reg],
-            Mode::FIQ if 8 <= reg && reg <= 14 => self.fiq[reg - 8],
-            Mode::Supervisor if 13 <= reg && reg <= 14 => self.supervisor[reg - 13],
-            Mode::Abort if 13 <= reg && reg <= 14 => self.abort[reg - 13],
-            Mode::IRQ if 13 <= reg && reg <= 14 => self.irq[reg - 13],
-            Mode::Undefined if 13 <= reg && reg <= 14 => self.undefined[reg - 13],
+            Mode::FIQ if (8 <= reg && reg <= 14) => self.fiq[reg - 8],
+            Mode::Supervisor if (13 <= reg && reg <= 14) => self.supervisor[reg - 13],
+            Mode::Abort if (13 <= reg && reg <= 14) => self.abort[reg - 13],
+            Mode::IRQ if (13 <= reg && reg <= 14) => self.irq[reg - 13],
+            Mode::Undefined if (13 <= reg && reg <= 14) => self.undefined[reg - 13],
             _ => self.sys_user[reg],
         }
     }
 
     pub fn get_mut(&mut self, reg: u32, mode: &Mode) -> &mut u32 {
+        assert!(reg <= 15);
         let reg: usize = reg.try_into().unwrap();
         match *mode {
             Mode::User | Mode::System => &mut self.sys_user[reg],

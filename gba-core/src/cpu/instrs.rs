@@ -2,13 +2,19 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{bus::Bus, utils::AddressableBits};
 
-use super::{Cpu, State, ArmLut, ThumbLut};
+use super::{ArmLut, Cpu, State, ThumbLut};
 
 pub mod arm;
 pub mod thumb;
 
 impl Cpu {
-    pub fn execute(&mut self, bus: &mut Bus, instruction: u32, arm_lut: &ArmLut, thumb_lut: &ThumbLut) {
+    pub fn execute(
+        &mut self,
+        bus: &mut Bus,
+        instruction: u32,
+        arm_lut: &ArmLut,
+        thumb_lut: &ThumbLut,
+    ) {
         match self.get_state() {
             State::ARM => {
                 if !self.check_cond(instruction.bits(28, 31)) {

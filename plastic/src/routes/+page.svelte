@@ -4,6 +4,7 @@
 	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
+	import Tilemap from "../components/Tilemap.svelte";
 	import Toolbar from "../components/Toolbar.svelte";
 
     let clockSpeed: number;
@@ -20,8 +21,14 @@
         <div>
             <EmuInfo />
         </div>
-        <div id="screen-wrapper" on:keydown={handleKeyDown} on:keyup={handleKeyUp} tabindex={0}>
-            <Screen />
+        <div class="row">
+            <Tilemap bg={0} />
+            <Tilemap bg={1} />
+            <Tilemap bg={2} />
+            <Tilemap bg={3} />
+            <div id="screen-wrapper" on:keydown={handleKeyDown} on:keyup={handleKeyUp} tabindex={0}>
+                <Screen />
+            </div>
         </div>
     </div>
 </div>
@@ -57,5 +64,10 @@
         display: flex;
         flex-direction: column;
         width: 100%;
+    }
+
+    .row {
+        display: flex;
+        flex-direction: row;
     }
 </style>

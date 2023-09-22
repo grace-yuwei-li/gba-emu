@@ -199,8 +199,12 @@ impl ArmInstruction for TodoInstruction {
 
 struct UnimplementedInstruction;
 impl ArmInstruction for UnimplementedInstruction {
-    fn execute(&self, _: &mut Cpu, _: &mut Bus, _: u32) {
-        todo!()
+    fn execute(&self, cpu: &mut Cpu, _: &mut Bus, instruction: u32) {
+        panic!(
+            "Unimplemented instruction {:x} at PC {:x}",
+            instruction,
+            cpu.get_reg(15) - 8
+        );
     }
 
     fn disassembly(&self, _instruction: u32) -> String {

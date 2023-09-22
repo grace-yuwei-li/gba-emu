@@ -1,6 +1,5 @@
 mod addressable_bits;
 pub mod js;
-pub mod logging;
 
 pub use addressable_bits::AddressableBits;
 use num_traits::{FromBytes, ToBytes};

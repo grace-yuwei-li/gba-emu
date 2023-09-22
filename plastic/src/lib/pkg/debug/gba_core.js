@@ -403,31 +403,12 @@ export class GbaCore {
         wasm.__wbg_set_gbacore_stopped(this.__wbg_ptr, arg0);
     }
     /**
+    * @param {number} address
+    * @returns {number}
     */
-    constructor() {
-        const ret = wasm.gbacore_new();
-        return GbaCore.__wrap(ret);
-    }
-    /**
-    * @returns {CpuDetails}
-    */
-    inspect_cpu() {
-        const ret = wasm.gbacore_inspect_cpu(this.__wbg_ptr);
-        return CpuDetails.__wrap(ret);
-    }
-    /**
-    * @returns {PpuDetails}
-    */
-    inspect_ppu() {
-        const ret = wasm.gbacore_inspect_ppu(this.__wbg_ptr);
-        return PpuDetails.__wrap(ret);
-    }
-    /**
-    * @returns {MemoryDetails}
-    */
-    inspect_memory() {
-        const ret = wasm.gbacore_inspect_memory(this.__wbg_ptr);
-        return MemoryDetails.__wrap(ret);
+    read_halfword(address) {
+        const ret = wasm.gbacore_read_halfword(this.__wbg_ptr, address);
+        return ret >>> 0;
     }
     /**
     * @returns {boolean}
@@ -555,6 +536,71 @@ export class GbaCore {
     */
     set_key(key, pressed) {
         wasm.gbacore_set_key(this.__wbg_ptr, key, pressed);
+    }
+    /**
+    */
+    constructor() {
+        const ret = wasm.gbacore_new();
+        return GbaCore.__wrap(ret);
+    }
+    /**
+    * @returns {Uint32Array}
+    */
+    pc_history() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.gbacore_pc_history(retptr, this.__wbg_ptr);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
+            var v1 = getArrayU32FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_free(r0, r1 * 4);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+    * @returns {CpuDetails}
+    */
+    inspect_cpu() {
+        const ret = wasm.gbacore_inspect_cpu(this.__wbg_ptr);
+        return CpuDetails.__wrap(ret);
+    }
+    /**
+    * @returns {PpuDetails}
+    */
+    inspect_ppu() {
+        const ret = wasm.gbacore_inspect_ppu(this.__wbg_ptr);
+        return PpuDetails.__wrap(ret);
+    }
+    /**
+    * @returns {MemoryDetails}
+    */
+    inspect_memory() {
+        const ret = wasm.gbacore_inspect_memory(this.__wbg_ptr);
+        return MemoryDetails.__wrap(ret);
+    }
+    /**
+    * @param {number} bg
+    * @returns {Uint8ClampedArray}
+    */
+    tilemap(bg) {
+        const ret = wasm.gbacore_tilemap(this.__wbg_ptr, bg);
+        return takeObject(ret);
+    }
+    /**
+    * @returns {number}
+    */
+    ie_reg() {
+        const ret = wasm.gbacore_ie_reg(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+    * @returns {number}
+    */
+    if_reg() {
+        const ret = wasm.gbacore_if_reg(this.__wbg_ptr);
+        return ret >>> 0;
     }
 }
 /**

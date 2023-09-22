@@ -35,6 +35,14 @@
         }
     }
 
+    const printPcHistory = () => {
+        const pcs = $gba?.gba.pc_history();
+        if (!pcs) return;
+
+        const hexs: string[] = Array.from(pcs).map((val) => val.toString(16));
+        console.log(hexs);
+    }
+
     $: if (files && files[0]) {
         files[0].arrayBuffer().then((array) => {
             let bytes = new Uint8Array(array);
@@ -56,6 +64,7 @@
     <span>Average millis/frame: {averageFrameTime.toFixed(2)}</span>
     <span>PC: 0x{$gba?.cpu.pc().toString(16)}</span>
     <span>Thumb: {$gba?.gba.thumb_state()}</span>
+    <button on:click={printPcHistory}>PC history</button>
 </div>
 
 <style>

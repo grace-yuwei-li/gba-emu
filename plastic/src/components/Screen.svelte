@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { gba } from "$lib/gbaStore";
 
-    let canvas: HTMLCanvasElement;
+    let screen_canvas: HTMLCanvasElement;
 
     $: details = $gba?.ppu;
 
@@ -14,7 +14,7 @@
                 resizeHeight: 160,
                 resizeQuality: 'pixelated',
             }).then((bitmap) => {
-                const ctx = canvas.getContext('2d');
+                const ctx = screen_canvas.getContext('2d');
                 ctx?.drawImage(bitmap, 0, 0);
             });
         }
@@ -22,14 +22,15 @@
 </script>
 
 <canvas
-    bind:this={canvas}
+    class="screen-canvas"
+    bind:this={screen_canvas}
     style="image-rendering: pixelated"
     width={240}
     height={160}
 />
 
 <style>
-    canvas {
+    .screen-canvas {
         width: calc(2 * 240px);
         height: calc(2 * 160px);
         padding: 1em;

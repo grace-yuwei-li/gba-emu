@@ -1,15 +1,18 @@
+mod dispstat;
 mod lcd_regs;
-mod utils;
 mod masked_byte;
+mod utils;
 
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
+    bus::{Interrupt, IoMap},
     ppu::utils::decode_color,
-    utils::{get, set, AddressableBits}, bus::{Interrupt, IoMap},
+    utils::{get, set, AddressableBits},
 };
 
+use dispstat::Dispstat;
 use lcd_regs::LcdRegs;
 
 const SCREEN_WIDTH: u16 = 240;
@@ -17,9 +20,6 @@ const SCREEN_HEIGHT: u16 = 160;
 const SCREEN_AREA: u16 = SCREEN_WIDTH * SCREEN_HEIGHT;
 const H_BLANK_WIDTH: u16 = 68;
 const V_BLANK_HEIGHT: u16 = 68;
-
-const DISPSTAT_V_BLANK: usize = 0;
-const DISPSTAT_H_BLANK: usize = 1;
 
 pub struct Ppu {
     lcd_regs: LcdRegs,
@@ -148,7 +148,7 @@ impl Ppu {
                 let tile_index = usize::from(tile_x + tile_y * 32);
                 let tm_data = u16::from_le_bytes([
                     self.vram[screen_base_block + 0x800 * screenblock + tile_index * 2],
-                    self.vram[screen_base_block + 0x800 * screenblock + tile_index * 2 + 1]
+                    self.vram[screen_base_block + 0x800 * screenblock + tile_index * 2 + 1],
                 ]);
 
                 let flip_vertical = tm_data.bit(11) == 1;
@@ -164,7 +164,8 @@ impl Ppu {
                 }
 
                 let ts_index: usize = usize::from(tm_data.bits(0, 9));
-                let ts_byte = self.vram[character_base_block + 32 * ts_index + 4 * subpixel_y + subpixel_x / 2];
+                let ts_byte = self.vram
+                    [character_base_block + 32 * ts_index + 4 * subpixel_y + subpixel_x / 2];
 
                 let palette_offset = if subpixel_x % 2 == 0 {
                     ts_byte.bits(0, 3)
@@ -180,7 +181,8 @@ impl Ppu {
             1 => [128, 128, 0],
             2 => [0, 0, 255],
             3 => {
-                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
+                let pixel_index: usize =
+                    usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
                 let color = u16::from_le_bytes([
                     self.vram[2 * pixel_index],
                     self.vram[2 * pixel_index + 1],
@@ -188,7 +190,8 @@ impl Ppu {
                 decode_color(color)
             }
             4 => {
-                let pixel_index: usize = usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
+                let pixel_index: usize =
+                    usize::from(self.x + self.lcd_regs.vcount.read() * SCREEN_WIDTH);
                 let bg = if self.lcd_regs.dispcnt.read().bit(4) == 0 {
                     &self.vram[0..usize::from(SCREEN_AREA)]
                 } else {
@@ -212,14 +215,14 @@ impl Ppu {
             0 => 0,
             1 => (tile_x % 64) / 32,
             2 => (tile_y % 64) / 32,
-            3 => ((tile_y % 64) / 32) * 2 + (tile_x % 64)/ 32,
+            3 => ((tile_y % 64) / 32) * 2 + (tile_x % 64) / 32,
             _ => unreachable!(),
         }
     }
 
     fn palette_lookup(&self, offset: usize, palette_bank: usize) -> [u8; 3] {
         let index = palette_bank * 32 + 2 * offset;
-        let color = u16::from_le_bytes(self.bg_obj_palette[index ..= index + 1].try_into().unwrap());
+        let color = u16::from_le_bytes(self.bg_obj_palette[index..=index + 1].try_into().unwrap());
         decode_color(color.into())
     }
 
@@ -251,31 +254,108 @@ impl Ppu {
             self.x += 1;
             if self.x == SCREEN_WIDTH + H_BLANK_WIDTH {
                 self.x = 0;
-                self.lcd_regs.vcount.write( self.lcd_regs.vcount.read() + 1);
+                self.lcd_regs.vcount.write(self.lcd_regs.vcount.read() + 1);
                 if self.lcd_regs.vcount.read() == SCREEN_HEIGHT + V_BLANK_HEIGHT {
                     // New frame
                     self.lcd_regs.vcount.write(0);
                 }
+
+                // Check VCount == LYC and send VCount interrupt if true
+                if self.lcd_regs.vcount.read() == self.lcd_regs.dispstat.read().bits(8, 15)
+                    && self
+                        .lcd_regs
+                        .dispstat
+                        .read()
+                        .bit(Dispstat::VCountIrq.into())
+                        == 1
+                {
+                        io_map.set_interrupt(Interrupt::VCount, true);
+                }
             }
 
-            if self.lcd_regs.vcount.read() == 0 && self.x == 0 {
-                // V-Draw starts and V-Blank ends
-                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_V_BLANK, false));
-            } else if self.lcd_regs.vcount.read() < SCREEN_HEIGHT && self.x == 0 {
-                // V-Draw starts and H-Blank ends
-                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, false));
-            } else if self.lcd_regs.vcount.read() < SCREEN_HEIGHT && self.x == SCREEN_WIDTH {
-                // H-Blank starts and V-Draw ends
-                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, true));
-            } else if self.lcd_regs.vcount.read() == SCREEN_HEIGHT {
-                // V-Blank starts and H-Blank ends
-                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_V_BLANK, true));
-                self.lcd_regs.dispstat.force_write( self.lcd_regs.dispstat.read().set_bit(DISPSTAT_H_BLANK, false));
-                //io_map.set_interrupt(Interrupt::VBlank, true);
+            if self.x == 0 {
+                self.set_dispstat_bit(Dispstat::HBlank.into(), false);
+                if self.lcd_regs.vcount.read() == 0 {
+                    self.set_dispstat_bit(Dispstat::VBlank.into(), false);
+                } else if self.lcd_regs.vcount.read() == SCREEN_HEIGHT {
+                    self.set_dispstat_bit(Dispstat::VBlank.into(), true);
+
+                    if self
+                        .lcd_regs
+                        .dispstat
+                        .read()
+                        .bit(Dispstat::VBlankIrq.into())
+                        == 1
+                    {
+                        io_map.set_interrupt(Interrupt::VBlank, true);
+                    }
+                }
+            } else if self.x == SCREEN_WIDTH {
+                self.set_dispstat_bit(Dispstat::HBlank.into(), true);
+
+                if self
+                    .lcd_regs
+                    .dispstat
+                    .read()
+                    .bit(Dispstat::HBlankIrq.into())
+                    == 1
+                {
+                    io_map.set_interrupt(Interrupt::HBlank, true);
+                }
             }
         } else {
             self.pixel_timer -= 1;
         }
+    }
+
+    fn set_dispstat_bit(&mut self, bit: usize, value: bool) {
+        self.lcd_regs
+            .dispstat
+            .force_write(self.lcd_regs.dispstat.read().set_bit(bit, value));
+    }
+}
+
+impl Ppu {
+    pub fn tilemap(&self, bg: usize) -> js_sys::Uint8ClampedArray {
+        let num_tiles = 16;
+        let mut bytes: Vec<u8> = vec![];
+
+        for ts_index in 0..num_tiles {
+            for subtile_x in 0..8 {
+                for subtile_y in 0..8 {
+                    bytes.extend_from_slice(
+                        &self.get_tile_color(bg, ts_index, subtile_x, subtile_y),
+                    );
+                }
+            }
+        }
+
+        let array = js_sys::Uint8ClampedArray::new_with_length(bytes.len().try_into().unwrap());
+        array.copy_from(&bytes);
+        array
+    }
+
+    fn get_tile_color(
+        &self,
+        bg: usize,
+        ts_index: usize,
+        subtile_x: usize,
+        subtile_y: usize,
+    ) -> [u8; 4] {
+        let bg_cnt: u16 = self.read_lcd_io_regs(0x4000008 + bg * 2);
+        let character_base_block = usize::from(bg_cnt.bits(2, 3)) * 0x4000;
+
+        let ts_byte =
+            self.vram[character_base_block + 32 * ts_index + 4 * subtile_y + subtile_x / 2];
+
+        let palette_offset = if subtile_x % 2 == 0 {
+            ts_byte.bits(0, 3)
+        } else {
+            ts_byte.bits(4, 7)
+        };
+
+        let gray = (255. * f64::from(palette_offset) / 15.) as u8;
+        [gray, gray, gray, 255]
     }
 }
 
