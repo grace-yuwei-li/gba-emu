@@ -143,7 +143,7 @@ impl Bus {
             },
             0x5000000..=0x7ffffff => self.ppu.write_simple(index, value),
             // Cartridge ROM - read only?
-            0x8000000..=0xdffffff => { }
+            0x8000000..=0xdffffff => {}
             // TODO: Cartridge SRAM
             0xe000000..=0xe00ffff => {}
             0x1000_0000..=0xffff_ffff => {}

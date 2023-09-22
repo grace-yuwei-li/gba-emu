@@ -2,10 +2,10 @@ mod wasm;
 
 use std::collections::HashSet;
 
-use crate::cpu::generate_luts;
-use crate::cpu::{ArmInstruction, Cpu, ThumbInstruction};
-use crate::cpu::State;
 use crate::bus::{self, Bus};
+use crate::cpu::generate_luts;
+use crate::cpu::State;
+use crate::cpu::{ArmInstruction, Cpu, ThumbInstruction};
 
 use wasm_bindgen::prelude::*;
 
@@ -158,4 +158,3 @@ mod tests {
         assert_eq!(gba.bus.read_half(0x4000202, &gba.cpu), 0);
     }
 }
-

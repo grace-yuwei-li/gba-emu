@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::{GbaCore, cpu::CpuDetails, ppu::PpuDetails, bus::MemoryDetails};
+use crate::{bus::MemoryDetails, cpu::CpuDetails, ppu::PpuDetails, GbaCore};
 
 #[wasm_bindgen]
 impl GbaCore {

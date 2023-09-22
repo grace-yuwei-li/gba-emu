@@ -269,7 +269,7 @@ impl Ppu {
                         .bit(Dispstat::VCountIrq.into())
                         == 1
                 {
-                        io_map.set_interrupt(Interrupt::VCount, true);
+                    io_map.set_interrupt(Interrupt::VCount, true);
                 }
             }
 
