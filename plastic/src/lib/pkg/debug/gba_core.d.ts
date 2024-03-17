@@ -60,6 +60,38 @@ export class CpuDetails {
 export class GbaCore {
   free(): void;
 /**
+*/
+  constructor();
+/**
+* @returns {Uint32Array}
+*/
+  pc_history(): Uint32Array;
+/**
+* @returns {CpuDetails}
+*/
+  inspect_cpu(): CpuDetails;
+/**
+* @returns {PpuDetails}
+*/
+  inspect_ppu(): PpuDetails;
+/**
+* @returns {MemoryDetails}
+*/
+  inspect_memory(): MemoryDetails;
+/**
+* @param {number} bg
+* @returns {Uint8ClampedArray}
+*/
+  tilemap(bg: number): Uint8ClampedArray;
+/**
+* @returns {number}
+*/
+  ie_reg(): number;
+/**
+* @returns {number}
+*/
+  if_reg(): number;
+/**
 * @param {number} address
 * @returns {number}
 */
@@ -127,42 +159,15 @@ export class GbaCore {
 */
   read_address(address: number): number;
 /**
-* @param {number} key
+* @param {Key} key
 * @param {boolean} pressed
 */
-  set_key(key: number, pressed: boolean): void;
+  set_key(key: Key, pressed: boolean): void;
 /**
+* @param {number} index
+* @returns {Uint8Array}
 */
-  constructor();
-/**
-* @returns {Uint32Array}
-*/
-  pc_history(): Uint32Array;
-/**
-* @returns {CpuDetails}
-*/
-  inspect_cpu(): CpuDetails;
-/**
-* @returns {PpuDetails}
-*/
-  inspect_ppu(): PpuDetails;
-/**
-* @returns {MemoryDetails}
-*/
-  inspect_memory(): MemoryDetails;
-/**
-* @param {number} bg
-* @returns {Uint8ClampedArray}
-*/
-  tilemap(bg: number): Uint8ClampedArray;
-/**
-* @returns {number}
-*/
-  ie_reg(): number;
-/**
-* @returns {number}
-*/
-  if_reg(): number;
+  bg_tilemap(index: number): Uint8Array;
 /**
 */
   stopped: boolean;
@@ -174,6 +179,16 @@ export class MemoryDetails {
 /**
 */
   readonly vram: Uint8Array;
+}
+/**
+*/
+export class Ppu {
+  free(): void;
+/**
+* @param {number} index
+* @returns {Uint8Array}
+*/
+  bg_tilemap(index: number): Uint8Array;
 }
 /**
 */
@@ -192,10 +207,31 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly disassemble_arm: (a: number, b: number) => void;
-  readonly disassemble_thumb: (a: number, b: number) => void;
+  readonly __wbg_ppu_free: (a: number) => void;
+  readonly __wbg_ppudetails_free: (a: number) => void;
+  readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
+  readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
+  readonly ppudetails_screen: (a: number) => number;
   readonly __wbg_memorydetails_free: (a: number) => void;
   readonly memorydetails_vram: (a: number) => number;
+  readonly __wbg_cpudetails_free: (a: number) => void;
+  readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
+  readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
+  readonly cpudetails_reg: (a: number, b: number, c: number, d: number) => void;
+  readonly cpudetails_cpsr: (a: number) => number;
+  readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
+  readonly cpudetails_mode: (a: number) => number;
+  readonly cpudetails_pc: (a: number) => number;
+  readonly disassemble_arm: (a: number, b: number) => void;
+  readonly disassemble_thumb: (a: number, b: number) => void;
+  readonly gbacore_new: () => number;
+  readonly gbacore_pc_history: (a: number, b: number) => void;
+  readonly gbacore_inspect_cpu: (a: number) => number;
+  readonly gbacore_inspect_ppu: (a: number) => number;
+  readonly gbacore_inspect_memory: (a: number) => number;
+  readonly gbacore_tilemap: (a: number, b: number) => number;
+  readonly gbacore_ie_reg: (a: number) => number;
+  readonly gbacore_if_reg: (a: number) => number;
   readonly __wbg_gbacore_free: (a: number) => void;
   readonly __wbg_get_gbacore_stopped: (a: number) => number;
   readonly __wbg_set_gbacore_stopped: (a: number, b: number) => void;
@@ -216,27 +252,9 @@ export interface InitOutput {
   readonly gbacore_remove_thumb_breakpoint: (a: number, b: number) => void;
   readonly gbacore_read_address: (a: number, b: number) => number;
   readonly gbacore_set_key: (a: number, b: number, c: number) => void;
+  readonly ppu_bg_tilemap: (a: number, b: number, c: number) => void;
+  readonly gbacore_bg_tilemap: (a: number, b: number, c: number) => void;
   readonly gbacore_set_stopped: (a: number, b: number) => void;
-  readonly __wbg_ppudetails_free: (a: number) => void;
-  readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
-  readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
-  readonly ppudetails_screen: (a: number) => number;
-  readonly gbacore_new: () => number;
-  readonly gbacore_pc_history: (a: number, b: number) => void;
-  readonly gbacore_inspect_cpu: (a: number) => number;
-  readonly gbacore_inspect_ppu: (a: number) => number;
-  readonly gbacore_inspect_memory: (a: number) => number;
-  readonly gbacore_tilemap: (a: number, b: number) => number;
-  readonly gbacore_ie_reg: (a: number) => number;
-  readonly gbacore_if_reg: (a: number) => number;
-  readonly __wbg_cpudetails_free: (a: number) => void;
-  readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
-  readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
-  readonly cpudetails_reg: (a: number, b: number, c: number, d: number) => void;
-  readonly cpudetails_cpsr: (a: number) => number;
-  readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
-  readonly cpudetails_mode: (a: number) => number;
-  readonly cpudetails_pc: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

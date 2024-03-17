@@ -1,7 +1,9 @@
 mod wasm;
+mod debug;
 
 use std::collections::HashSet;
 
+use crate::Ppu;
 use crate::bus::{self, Bus};
 use crate::cpu::generate_luts;
 use crate::cpu::State;
@@ -14,7 +16,7 @@ pub use crate::utils::js::*;
 #[wasm_bindgen]
 pub struct GbaCore {
     cpu: Cpu,
-    bus: Bus,
+    pub(crate) bus: Bus,
 
     arm_lut: [Box<dyn ArmInstruction>; 0x1000],
     thumb_lut: [Box<dyn ThumbInstruction>; 0x1000],

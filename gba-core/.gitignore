@@ -3,3 +3,4 @@ arm-log.bin
 /game-roms
 bios.bin
 og-bios.bin
+*.sav

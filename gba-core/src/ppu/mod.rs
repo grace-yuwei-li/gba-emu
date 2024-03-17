@@ -2,6 +2,7 @@ mod dispstat;
 mod lcd_regs;
 mod masked_byte;
 mod utils;
+mod debug;
 
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -21,6 +22,7 @@ const SCREEN_AREA: u16 = SCREEN_WIDTH * SCREEN_HEIGHT;
 const H_BLANK_WIDTH: u16 = 68;
 const V_BLANK_HEIGHT: u16 = 68;
 
+#[wasm_bindgen]
 pub struct Ppu {
     lcd_regs: LcdRegs,
     bg_obj_palette: Vec<u8>,

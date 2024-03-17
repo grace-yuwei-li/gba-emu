@@ -158,6 +158,7 @@
         display: flex;
         flex-direction: column;
         height: 100%;
+        color: black;
     }
 
     #debugger-toolbar {

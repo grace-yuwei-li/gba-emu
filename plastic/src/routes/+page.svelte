@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handleKeyDown, handleKeyUp } from "$lib/keys";
 	import Debugger from "../components/Debugger/Debugger.svelte";
+	import PpuDebugger from "../components/PpuDebugger.svelte";
 	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
@@ -8,6 +9,11 @@
 	import Toolbar from "../components/Toolbar.svelte";
 
     let clockSpeed: number;
+    let leftPanel: string = "instructions";
+
+    function selectLeftPanel(event: any) {
+        leftPanel = event.currentTarget?.value;
+    }
 
 </script>
 
@@ -15,17 +21,27 @@
 <Toolbar bind:clockSpeed={clockSpeed} />
 <div id="main">
     <div>
-        <Debugger />
+        <div id="left-panel-select">
+            <label>
+                <input checked={leftPanel === "instructions"} on:change={selectLeftPanel} type="radio" name="panel" value="instructions">
+                Instructions
+            </label>
+            <label>
+                <input checked={leftPanel === "ppu"} on:change={selectLeftPanel} type="radio" name="panel" value="ppu">
+                PPU
+            </label>
+        </div>
+        {#if leftPanel === "instructions"}
+            <Debugger />
+        {:else if leftPanel === "ppu"}
+            <PpuDebugger />
+        {/if}
     </div>
     <div class="column" >
         <div>
             <EmuInfo />
         </div>
         <div class="row">
-            <Tilemap bg={0} />
-            <Tilemap bg={1} />
-            <Tilemap bg={2} />
-            <Tilemap bg={3} />
             <div id="screen-wrapper" on:keydown={handleKeyDown} on:keyup={handleKeyUp} tabindex={0}>
                 <Screen />
             </div>
@@ -41,6 +57,7 @@
         display: flex;
         flex-direction: column;
         font-family: monospace;
+        color: white;
     }
 
     #main {
@@ -58,6 +75,14 @@
         display: flex;
         justify-content: center;
         align-items: center;
+    }
+
+    #left-panel-select {
+        color: white;
+    }
+
+    #left-panel-select {
+        max-height: 100%;
     }
 
     .column {

@@ -25,13 +25,13 @@ impl MemoryDetails {
 }
 
 pub struct Bus {
-    bios: [u8; 0x4000],
-    ew_ram: [u8; 0x40000],
-    iw_ram: [u8; 0x8000],
+    bios: Vec<u8>,//[u8; 0x4000],
+    ew_ram: Vec<u8>,//[u8; 0x40000],
+    iw_ram: Vec<u8>,//[u8; 0x8000],
 
     game_pak_rom: Vec<u8>,
 
-    pub io_map: IoMap,
+    pub(crate) io_map: IoMap,
 
     pub(crate) ppu: Ppu,
 }
@@ -39,9 +39,9 @@ pub struct Bus {
 impl Default for Bus {
     fn default() -> Self {
         Self {
-            bios: include_bytes!("../../og-bios.bin").clone(),
-            ew_ram: [0; 0x40000],
-            iw_ram: [0; 0x8000],
+            bios: include_bytes!("../../og-bios.bin").to_vec(),
+            ew_ram: vec![0; 0x40000],
+            iw_ram: vec![0; 0x8000],
 
             game_pak_rom: vec![0; 0x2000000],
 

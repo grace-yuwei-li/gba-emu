@@ -5,14 +5,18 @@
 
     let tilemap_canvas: HTMLCanvasElement;
 
+    const width = 16 * 8;
+    const height = 8;
+
     $: tilemap = $gba?.gba.tilemap(bg);
 
     $: {
         if (tilemap) {
-            const imageData = new ImageData(tilemap, 8, 16 * 8);
+            const arr = new Uint8ClampedArray(tilemap.buffer);
+            const imageData = new ImageData(arr, width, height);
             createImageBitmap(imageData, {
-                resizeWidth: 8,
-                resizeHeight: 16 * 8,
+                resizeWidth: width,
+                resizeHeight: height,
                 resizeQuality: 'pixelated',
             }).then((bitmap) => {
                 const ctx = tilemap_canvas?.getContext('2d');
@@ -25,15 +29,18 @@
 <canvas
     class="tilemap-canvas"
     bind:this={tilemap_canvas}
-    style="image-rendering: pixelated"
-    width={8}
-    height={16*8}
+    style="image-rendering: pixelated; 
+        --width: {width};
+        --height: {height};
+        "
+    width={width}
+    height={height}
 />
 
 <style>
     .tilemap-canvas {
-        width: calc(2 * 8px);
-        height: calc(2 * 16 * 8px);
+        width: calc(3px * var(--width));
+        height: calc(3px * var(--height));
         padding: 0.5em;
     }
 </style>
