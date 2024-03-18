@@ -176,7 +176,7 @@ impl Ppu {
                 };
 
                 let palette_bank = tm_data.bits(12, 15);
-                let color = self.palette_lookup_16(palette_offset.into(), palette_bank.into());
+                let color = self.palette_lookup_16(palette_bank.into(), palette_offset.into());
 
                 color
             }
@@ -232,7 +232,7 @@ impl Ppu {
         self.palette_lookup_internal(index)
     }
 
-    fn palette_lookup_16(&self, offset: usize, palette_bank: usize) -> [u8; 3] {
+    fn palette_lookup_16(&self, palette_bank: usize, offset: usize) -> [u8; 3] {
         let index = palette_bank * 32 + 2 * offset;
         self.palette_lookup_internal(index)
     }
