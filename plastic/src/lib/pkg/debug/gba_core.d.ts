@@ -167,7 +167,12 @@ export class GbaCore {
 * @param {number} index
 * @returns {Uint8Array}
 */
-  bg_tilemap(index: number): Uint8Array;
+  debug_bg_tilemap(index: number): Uint8Array;
+/**
+* @param {CanvasRenderingContext2D} ctx
+* @param {number | undefined} [palette16]
+*/
+  draw_tiles(ctx: CanvasRenderingContext2D, palette16?: number): void;
 /**
 */
   stopped: boolean;
@@ -189,6 +194,13 @@ export class Ppu {
 * @returns {Uint8Array}
 */
   bg_tilemap(index: number): Uint8Array;
+/**
+* Returns a vector of the tiles stored in VRAM, interpreting their bytes based on the given
+* parameters.
+* @param {boolean} more_colors
+* @returns {(Tile)[]}
+*/
+  debug_tiles(more_colors: boolean): (Tile)[];
 }
 /**
 */
@@ -202,6 +214,13 @@ export class PpuDetails {
 */
   bg_mode: number;
 }
+/**
+* A collection of colors that make up the 8x8 tile
+* Each pixel is called a dot
+*/
+export class Tile {
+  free(): void;
+}
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -214,6 +233,8 @@ export interface InitOutput {
   readonly ppudetails_screen: (a: number) => number;
   readonly __wbg_memorydetails_free: (a: number) => void;
   readonly memorydetails_vram: (a: number) => number;
+  readonly disassemble_arm: (a: number, b: number) => void;
+  readonly disassemble_thumb: (a: number, b: number) => void;
   readonly __wbg_cpudetails_free: (a: number) => void;
   readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
   readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
@@ -222,8 +243,6 @@ export interface InitOutput {
   readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
   readonly cpudetails_mode: (a: number) => number;
   readonly cpudetails_pc: (a: number) => number;
-  readonly disassemble_arm: (a: number, b: number) => void;
-  readonly disassemble_thumb: (a: number, b: number) => void;
   readonly gbacore_new: () => number;
   readonly gbacore_pc_history: (a: number, b: number) => void;
   readonly gbacore_inspect_cpu: (a: number) => number;
@@ -252,8 +271,11 @@ export interface InitOutput {
   readonly gbacore_remove_thumb_breakpoint: (a: number, b: number) => void;
   readonly gbacore_read_address: (a: number, b: number) => number;
   readonly gbacore_set_key: (a: number, b: number, c: number) => void;
+  readonly __wbg_tile_free: (a: number) => void;
   readonly ppu_bg_tilemap: (a: number, b: number, c: number) => void;
-  readonly gbacore_bg_tilemap: (a: number, b: number, c: number) => void;
+  readonly ppu_debug_tiles: (a: number, b: number, c: number) => void;
+  readonly gbacore_debug_bg_tilemap: (a: number, b: number, c: number) => void;
+  readonly gbacore_draw_tiles: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly gbacore_set_stopped: (a: number, b: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

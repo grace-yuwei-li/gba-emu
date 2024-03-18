@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { handleKeyDown, handleKeyUp } from "$lib/keys";
 	import Debugger from "../components/Debugger/Debugger.svelte";
-	import PpuDebugger from "../components/PpuDebugger.svelte";
+	import PpuDebugger from "../components/PpuDebugger/PpuDebugger.svelte";
 	import EmuInfo from "../components/EmuInfo.svelte";
 	import GbaTicker from "../components/GbaTicker.svelte";
 	import Screen from "../components/Screen.svelte";
-	import Tilemap from "../components/Tilemap.svelte";
 	import Toolbar from "../components/Toolbar.svelte";
 
     let clockSpeed: number;

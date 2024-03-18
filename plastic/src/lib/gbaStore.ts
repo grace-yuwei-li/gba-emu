@@ -37,6 +37,10 @@ export const reset = () => {
 
 export const tick = (numTicks: number) => {
 	gba.update((details) => {
+		if (document.hidden) {
+			return details;
+		}
+
 		if (!details) {
 			return details;
 		}

@@ -3,15 +3,12 @@ mod debug;
 
 use std::collections::HashSet;
 
-use crate::Ppu;
 use crate::bus::{self, Bus};
 use crate::cpu::generate_luts;
 use crate::cpu::State;
 use crate::cpu::{ArmInstruction, Cpu, ThumbInstruction};
 
 use wasm_bindgen::prelude::*;
-
-pub use crate::utils::js::*;
 
 #[wasm_bindgen]
 pub struct GbaCore {

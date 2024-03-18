@@ -176,7 +176,7 @@ impl Ppu {
                 };
 
                 let palette_bank = tm_data.bits(12, 15);
-                let color = self.palette_lookup(palette_offset.into(), palette_bank.into());
+                let color = self.palette_lookup_16(palette_offset.into(), palette_bank.into());
 
                 color
             }
@@ -222,10 +222,19 @@ impl Ppu {
         }
     }
 
-    fn palette_lookup(&self, offset: usize, palette_bank: usize) -> [u8; 3] {
-        let index = palette_bank * 32 + 2 * offset;
+    fn palette_lookup_internal(&self, index: usize) -> [u8; 3] {
         let color = u16::from_le_bytes(self.bg_obj_palette[index..=index + 1].try_into().unwrap());
         decode_color(color.into())
+    }
+
+    fn palette_lookup_256(&self, offset: usize) -> [u8; 3] {
+        let index = 2 * offset;
+        self.palette_lookup_internal(index)
+    }
+
+    fn palette_lookup_16(&self, offset: usize, palette_bank: usize) -> [u8; 3] {
+        let index = palette_bank * 32 + 2 * offset;
+        self.palette_lookup_internal(index)
     }
 
     pub fn inspect(&self) -> PpuDetails {

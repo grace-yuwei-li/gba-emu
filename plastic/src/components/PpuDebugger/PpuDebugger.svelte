@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
-	import Tilemap from "./Tilemap.svelte";
+	import Tilemap from "../Tilemap.svelte";
+	import TilesCanvas from "./TilesCanvas.svelte";
 
-    //$: tiles = $gba?.gba.tiles(bg);
+    let palette: number = 0;
+    let use_256_colors: boolean = false;
+
 </script>
 
 <div id="ppu-debugger">
@@ -27,12 +29,13 @@
         </h2>
         <label>
             Palette
-            <input type="number" min=0 max=15 value=0>
+            <input type="number" min=0 max=15 bind:value={palette}>
         </label>
         <label>
             256 Colours
-            <input type="checkbox">
+            <input type="checkbox" bind:checked={use_256_colors}>
         </label>
+        <TilesCanvas palette={palette} use_256_colors={use_256_colors} />
     </div>
 </div>
 
