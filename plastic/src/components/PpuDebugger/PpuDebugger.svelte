@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Tilemap from "../Tilemap.svelte";
+	import PalettesCanvas from "./PalettesCanvas.svelte";
 	import TilesCanvas from "./TilesCanvas.svelte";
 
     let palette: number = 0;
@@ -36,6 +37,9 @@
             <input type="checkbox" bind:checked={use_256_colors}>
         </label>
         <TilesCanvas palette={palette} use_256_colors={use_256_colors} />
+    </div>
+    <div>
+        <PalettesCanvas />
     </div>
 </div>
 

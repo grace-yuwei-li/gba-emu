@@ -12,20 +12,19 @@ pub struct Tile {
 }
 
 #[wasm_bindgen]
-impl Tile {
-}
+impl Tile {}
 
 impl Tile {
     pub fn from_16_color_data(data: &[u8]) -> Self {
         assert_eq!(data.len(), 32);
         let palette_offsets = data.iter().flat_map(|b| [b & 0xf, b >> 4]).collect();
-        Self {
-            palette_offsets
-        }
+        Self { palette_offsets }
     }
     pub fn from_256_color_data(data: &[u8]) -> Self {
         assert_eq!(data.len(), 64);
-        Self { palette_offsets: data.to_vec() }
+        Self {
+            palette_offsets: data.to_vec(),
+        }
     }
 }
 
@@ -73,24 +72,38 @@ impl GbaCore {
     pub fn debug_bg_tilemap(&self, index: usize) -> Vec<u8> {
         self.bus.ppu.bg_tilemap(index)
     }
-    
+
+    pub fn draw_palettes(
+        &self,
+        ctx: &web_sys::CanvasRenderingContext2d,
+    ) -> Result<(), wasm_bindgen::JsValue> {
+        let mut bytes: Vec<u8> = vec![];
+        for palette in 0..16 {
+            for offset in 0..16 {
+                let color = self.decode_16(palette, offset);
+                bytes.push(color[0]);
+                bytes.push(color[1]);
+                bytes.push(color[2]);
+                bytes.push(255);
+            }
+        }
+        web_sys::console::log_1(&wasm_bindgen::JsValue::from(format!("{:?}", bytes)));
+        let clamped_data: Clamped<&[u8]> = Clamped(&bytes);
+        let image_data = web_sys::ImageData::new_with_u8_clamped_array(clamped_data, 16)?;
+        ctx.put_image_data(&image_data, 0.0, 0.0)?;
+
+        Ok(())
+    }
+
     fn decode_16(&self, palette16: usize, offset: u8) -> [u8; 4] {
         let color = self.bus.ppu.palette_lookup_16(palette16, offset.into());
-        let alpha = if offset == 0 {
-            0
-        } else {
-            255
-        };
+        let alpha = if offset == 0 { 0 } else { 255 };
         [color[0], color[1], color[2], alpha]
     }
 
     fn decode_256(&self, offset: u8) -> [u8; 4] {
         let color = self.bus.ppu.palette_lookup_256(offset.into());
-        let alpha = if offset == 0 {
-            0
-        } else {
-            255
-        };
+        let alpha = if offset == 0 { 0 } else { 255 };
         [color[0], color[1], color[2], alpha]
     }
 
@@ -105,22 +118,19 @@ impl GbaCore {
             .ok_or_else(|| js_sys::Error::new("Context must have a canvas"))?;
         let width = canvas.width();
 
-
         let mut row = 0;
         let mut col = 0;
         for tile in &tiles {
             let unclamped_data: Vec<u8> = if let Some(palette16) = palette16 {
-                tile
-                .palette_offsets
-                .iter()
-                .flat_map(|&offset| self.decode_16(palette16, offset))
-                .collect()
+                tile.palette_offsets
+                    .iter()
+                    .flat_map(|&offset| self.decode_16(palette16, offset))
+                    .collect()
             } else {
-                tile
-                .palette_offsets
-                .iter()
-                .flat_map(|&offset| self.decode_256(offset))
-                .collect()
+                tile.palette_offsets
+                    .iter()
+                    .flat_map(|&offset| self.decode_256(offset))
+                    .collect()
             };
 
             let clamped_data: Clamped<&[u8]> = Clamped(&unclamped_data);
