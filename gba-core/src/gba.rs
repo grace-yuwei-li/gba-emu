@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct GbaCore {
-    cpu: Cpu,
+    pub(crate) cpu: Cpu,
     pub(crate) bus: Bus,
 
     arm_lut: [Box<dyn ArmInstruction>; 0x1000],

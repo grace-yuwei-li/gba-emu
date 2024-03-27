@@ -24,7 +24,7 @@ const V_BLANK_HEIGHT: u16 = 68;
 
 #[wasm_bindgen]
 pub struct Ppu {
-    lcd_regs: LcdRegs,
+    pub(crate) lcd_regs: LcdRegs,
     bg_obj_palette: Vec<u8>,
     pub(super) vram: Vec<u8>,
     oam: Vec<u8>,

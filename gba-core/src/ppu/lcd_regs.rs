@@ -119,4 +119,8 @@ impl LcdRegs {
             mem.write(mem.read().bits(0, 7) | (u16::from(value) << 8));
         }
     }
+
+    pub fn get_bg_mode(&self) -> u8 {
+        u8::try_from(self.dispcnt.read() & 0b111).unwrap().min(5)
+    }
 }

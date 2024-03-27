@@ -12,7 +12,15 @@ pub struct Tile {
 }
 
 #[wasm_bindgen]
-impl Tile {}
+pub struct BackgroundInfo {
+    pub priority: u8,
+    pub character_base_block: usize,
+    pub mosaic: bool,
+    pub use_256_colors: bool,
+    pub screen_base_block: usize,
+    pub wraparound: bool,
+    pub screen_size: u8,
+}
 
 impl Tile {
     pub fn from_16_color_data(data: &[u8]) -> Self {
@@ -145,5 +153,25 @@ impl GbaCore {
         }
 
         Ok(())
+    }
+
+    pub fn background_info(&self, background: u32) -> BackgroundInfo {
+        let base_address = 0x4000008 + 2 * background;
+        let bg_control_low = self.bus.read_byte(base_address, &self.cpu);
+        let bg_control_high = self.bus.read_byte(base_address + 1, &self.cpu);
+        
+        BackgroundInfo {
+            priority: bg_control_low & 0b11,
+            character_base_block: usize::from((bg_control_low >> 2) & 0b11),
+            mosaic: (bg_control_low >> 6) & 1 == 1,
+            use_256_colors: (bg_control_low >> 7) & 1 == 1,
+            screen_base_block: usize::from(bg_control_high & 0b11111),
+            wraparound: (bg_control_high >> 5) & 1 == 1,
+            screen_size: (bg_control_high >> 6) & 0b11,
+        }
+    }
+
+    pub fn background_mode(&self) -> u8 {
+        self.bus.ppu.lcd_regs.get_bg_mode()
     }
 }
