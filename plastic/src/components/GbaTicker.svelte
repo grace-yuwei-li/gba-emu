@@ -1,20 +1,14 @@
 <script lang="ts">
 	import { init, gbaStore } from '$lib/gbaStore';
-    import { addFrameTime } from '$lib/frameTimeStore';
+    import { updateDebuggerData } from '$lib/debuggerStore';
 	import { onMount } from 'svelte';
 
-    export let clockSpeed: number;
     $: gba = $gbaStore;
 
-    let start: number;
-    let tickDebt: number = 0;
     let rid: number;
-
-    const tickGba: FrameRequestCallback = (timestamp) => {
+    function tickGba() {
         if (gba) {
-            gba.process_responses();
-        } else {
-
+            updateDebuggerData(gba);
         }
         rid = requestAnimationFrame(tickGba);
     }

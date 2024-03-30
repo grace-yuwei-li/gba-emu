@@ -83,6 +83,7 @@ impl GbaThread {
         let mut cpu_debug_info = false;
 
         self.gba.load_test_rom();
+        self.gba.skip_bios();
 
         loop {
             for event in self.rx.try_iter() {
@@ -112,13 +113,11 @@ impl GbaThread {
             let elapsed = end_time - start_time;
             // Mult by 1000 for ms -> s
             let ticks_per_sec = ticks as f64 / elapsed * 1000.;
-            //console::log_1(&format!("TPS: {:.1} M", ticks_per_sec / 1_000_000.).into());
 
 
             if screen_render {
                 screen_render = false;
                 let data = self.gba.screen();
-                console::log_1(&format!("{:?}", &data).into());
                 self.tx.send(Response::ScreenData(data));
             }
             if cpu_debug_info {
@@ -193,14 +192,12 @@ impl Gba {
         for response in self.rx.try_iter() {
             match response {
                 Response::ScreenData(screen_data) => {
-                    console::log_1(&format!("Received {} bytes", screen_data.len()).into()); 
                     if let Some(screen_array) = &self.screen_array {
                         let js_screen_data: Vec<u8> = screen_data.chunks_exact(3).flat_map(|chunk| [chunk[0], chunk[1], chunk[2], 255]).collect();
                         screen_array.copy_from(&js_screen_data);
                     }
                 }
                 Response::CpuDebugInfo(info) => {
-                    console::log_1(&format!("CPU INFO: {:?}", info).into());
                 }
             }
         }

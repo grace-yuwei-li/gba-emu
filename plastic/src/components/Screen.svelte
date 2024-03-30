@@ -1,29 +1,21 @@
 <script lang="ts">
-	import { gbaStore } from "$lib/gbaStore";
+    import { debuggerStore } from "$lib/debuggerStore";
 	import { onMount } from "svelte";
 
     let screen_canvas: HTMLCanvasElement | undefined;
-    let screen_array = new Uint8ClampedArray(240 * 160 * 4);
 
-    $: gba = $gbaStore;
-    $: {
-        if (gba) {
-            console.log("setting screen array");
-            gba.set_screen_array(screen_array)
-        }
-    }
+    $: debuggerData = $debuggerStore;
 
     onMount(() => {
         const ctx = screen_canvas?.getContext('2d');
+        if (!ctx) {
+            throw new Error("Failed to get screen canvas context");
+        }
 
         let rid = requestAnimationFrame(function update() {
-            if (gba && ctx) {
-                console.log(screen_array);
-                let imageData = new ImageData(screen_array, 240);
-                ctx.putImageData(imageData, 0, 0);
-                gba.request_screen_draw();
-                gba.request_cpu_debug_info();
-            }
+            let imageData = new ImageData(debuggerData.screen_array, 240);
+            ctx.putImageData(imageData, 0, 0);
+
             rid = requestAnimationFrame(update);
         });
 

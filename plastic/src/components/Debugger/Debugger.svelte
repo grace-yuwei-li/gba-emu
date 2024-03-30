@@ -111,6 +111,7 @@
         }
     }
 
+    /*
     const toggleBreakpoint = (address: number) => {
         if (instructionSize === 4) {
             if (arm_breakpoints[address]) {
@@ -127,6 +128,7 @@
         }
         $gba = $gba;
     };
+    */
 </script>
 
 <div id="debugger-wrapper">
@@ -158,7 +160,7 @@
                     isExecuting={false && $gba?.cpu.executing_pc === line.address}
                     isPc={false && $gba?.cpu.pc() === line.address}
                     isBreakpoint={Boolean(instructionSize === 4 ? arm_breakpoints[line.address] : thumb_breakpoints[line.address])}
-                    toggleBreakpoint={toggleBreakpoint} />
+                    toggleBreakpoint={() => {}} />
             {/each}
         </table>
     </div>
