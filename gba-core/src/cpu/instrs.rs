@@ -33,12 +33,12 @@ impl Cpu {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub fn disassemble_arm(instruction: u32) -> String {
     Cpu::decode_arm(instruction).disassembly(instruction)
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub fn disassemble_thumb(instruction: u16) -> String {
     Cpu::decode_thumb(instruction).disassembly(instruction)
 }

@@ -1,13 +1,13 @@
 {
-  "name": "gba-core",
+  "name": "gba-web",
   "version": "0.1.0",
   "files": [
-    "gba_core_bg.wasm",
-    "gba_core.js",
-    "gba_core.d.ts"
+    "gba_web_bg.wasm",
+    "gba_web.js",
+    "gba_web.d.ts"
   ],
-  "module": "gba_core.js",
-  "types": "gba_core.d.ts",
+  "module": "gba_web.js",
+  "types": "gba_web.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

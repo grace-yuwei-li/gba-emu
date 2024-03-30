@@ -18,7 +18,7 @@ pub struct IoMap {
     pub irq_flags: [u8; 2],
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub enum Key {
     A,
     B,

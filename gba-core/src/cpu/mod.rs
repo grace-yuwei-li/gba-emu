@@ -44,7 +44,7 @@ enum CPSR {
     N,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 #[derive(Debug)]
 pub struct CpuDetails {
     regs: Regs,
@@ -52,7 +52,7 @@ pub struct CpuDetails {
     pub executing_pc: Option<u32>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 impl CpuDetails {
     pub fn reg(&self, index: u32, mode: JsValue) -> Option<u32> {
         let mode: Mode = serde_wasm_bindgen::from_value(mode).ok()?;

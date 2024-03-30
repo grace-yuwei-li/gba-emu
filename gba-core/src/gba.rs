@@ -1,6 +1,3 @@
-mod wasm;
-mod debug;
-
 use std::collections::HashSet;
 
 use crate::bus::{self, Bus};
@@ -10,7 +7,7 @@ use crate::cpu::{ArmInstruction, Cpu, ThumbInstruction};
 
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub struct GbaCore {
     pub(crate) cpu: Cpu,
     pub(crate) bus: Bus,
@@ -43,8 +40,19 @@ impl Default for GbaCore {
     }
 }
 
-#[wasm_bindgen]
 impl GbaCore {
+    /// Return the current screen data
+    pub fn screen(&self) -> Vec<u8> {
+        self.bus.ppu.screen()
+    }
+}
+
+#[cfg_attr(feature="debugger", wasm_bindgen)]
+impl GbaCore {
+    pub fn pc(&self) -> u32 {
+        self.cpu.get_executing_instruction_pc()
+    }
+
     pub fn read_halfword(&self, address: u32) -> u32 {
         self.bus.read_half(address, &self.cpu)
     }

@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
-    import { disassemble_arm, disassemble_thumb } from '$lib/pkg/debug/gba_core';
+	import { gbaStore } from "$lib/gbaStore";
+    //import { disassemble_arm, disassemble_thumb } from '$lib/pkg/debug/gba_core';
     import { type LineData, InstructionMode } from '$lib/debugger';
 	import Line from "./Line.svelte";
 
 	let debuggerHeight: number = 0;
+    let gba = $gbaStore;
 
 	const lineHeight = 20;
 
@@ -16,11 +17,14 @@
     // Determines gap between instruction addresses
     let instructionSize: 2 | 4; 
     $: if (instructionMode === InstructionMode.Auto) {
-        if ($gba?.gba.thumb_state()) {
+        instructionSize = 2;
+        /*
+        if (true || gba?.gba.thumb_state()) {
             instructionSize = 2;
         } else {
             instructionSize = 4;
         }
+        */
     } else if (instructionMode === InstructionMode.Arm) {
         instructionSize = 4;
     } else if (instructionMode === InstructionMode.Thumb) {
@@ -40,10 +44,14 @@
     // Map of breakpoints
     let arm_breakpoints: Record<number, boolean>;
     let thumb_breakpoints: Record<number, boolean>;
+    /*
     $: arm_breakpoints = Object.fromEntries(Array.from($gba?.gba.arm_breakpoints() ?? [])
                         .map((address:number) => [address, true]));
     $: thumb_breakpoints = Object.fromEntries(Array.from($gba?.gba.thumb_breakpoints() ?? [])
                         .map((address:number) => [address, true]));
+    */
+    arm_breakpoints = {};
+    thumb_breakpoints = {};
 
     const instructionModeOptions = [
         { label: "Auto", value: InstructionMode.Auto },
@@ -65,7 +73,8 @@
 
         let memValue: number | undefined = undefined;
         try {
-            memValue = $gba?.gba.read_address(address);
+            //memValue = $gba?.gba.read_address(address);
+            memValue = 0
         } catch {
             // Do nothing, disassembly is already undefined
         }
@@ -76,9 +85,11 @@
             }
 
             if (instructionSize === 2) {
-                disassembly = disassemble_thumb(memValue);
+                //disassembly = disassemble_thumb(memValue);
+                disassembly = "Invalid instruction size";
             } else if (instructionSize === 4) {
-                disassembly = disassemble_arm(memValue);
+                //disassembly = disassemble_arm(memValue);
+                disassembly = "Invalid instruction size";
             } else {
                 disassembly = "Invalid instruction size";
             }
@@ -144,8 +155,8 @@
                     line={line} 
                     lineHeight={lineHeight} 
                     instructionSize={instructionSize} 
-                    isExecuting={$gba?.cpu.executing_pc === line.address}
-                    isPc={$gba?.cpu.pc() === line.address}
+                    isExecuting={false && $gba?.cpu.executing_pc === line.address}
+                    isPc={false && $gba?.cpu.pc() === line.address}
                     isBreakpoint={Boolean(instructionSize === 4 ? arm_breakpoints[line.address] : thumb_breakpoints[line.address])}
                     toggleBreakpoint={toggleBreakpoint} />
             {/each}

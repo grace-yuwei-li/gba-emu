@@ -1,6 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+* Entry point for web workers
+* @param {number} ptr
+*/
+export function wasm_thread_entry_point(ptr: number): void;
+/**
 * @param {number} instruction
 * @returns {string}
 */
@@ -26,29 +31,11 @@ export enum Key {
 }
 /**
 */
-export class BackgroundInfo {
+export class CpuDebugInfo {
   free(): void;
 /**
 */
-  character_base_block: number;
-/**
-*/
-  mosaic: boolean;
-/**
-*/
-  priority: number;
-/**
-*/
-  screen_base_block: number;
-/**
-*/
-  screen_size: number;
-/**
-*/
-  use_256_colors: boolean;
-/**
-*/
-  wraparound: boolean;
+  pc: number;
 }
 /**
 */
@@ -82,64 +69,44 @@ export class CpuDetails {
   executing_pc?: number;
 }
 /**
+* Gameboy with debugger
 */
-export class GbaCore {
+export class Gba {
   free(): void;
-/**
-* @param {number} index
-* @returns {Uint8Array}
-*/
-  debug_bg_tilemap(index: number): Uint8Array;
-/**
-* @param {CanvasRenderingContext2D} ctx
-*/
-  draw_palettes(ctx: CanvasRenderingContext2D): void;
-/**
-* @param {CanvasRenderingContext2D} ctx
-* @param {number | undefined} [palette16]
-*/
-  draw_tiles(ctx: CanvasRenderingContext2D, palette16?: number): void;
-/**
-* @param {number} background
-* @returns {BackgroundInfo}
-*/
-  background_info(background: number): BackgroundInfo;
-/**
-* @returns {number}
-*/
-  background_mode(): number;
 /**
 */
   constructor();
 /**
-* @returns {Uint32Array}
+* @param {Uint8Array} rom
 */
-  pc_history(): Uint32Array;
+  load_rom(rom: Uint8Array): void;
 /**
-* @returns {CpuDetails}
+* Pause the GBA execution
+* @param {boolean} pause
 */
-  inspect_cpu(): CpuDetails;
+  set_pause(pause: boolean): void;
 /**
-* @returns {PpuDetails}
+* @param {Uint8ClampedArray} array
 */
-  inspect_ppu(): PpuDetails;
+  set_screen_array(array: Uint8ClampedArray): void;
 /**
-* @returns {MemoryDetails}
 */
-  inspect_memory(): MemoryDetails;
+  request_screen_draw(): void;
 /**
-* @param {number} bg
-* @returns {Uint8ClampedArray}
 */
-  tilemap(bg: number): Uint8ClampedArray;
+  request_cpu_debug_info(): void;
+/**
+*/
+  process_responses(): void;
+}
+/**
+*/
+export class GbaCore {
+  free(): void;
 /**
 * @returns {number}
 */
-  ie_reg(): number;
-/**
-* @returns {number}
-*/
-  if_reg(): number;
+  pc(): number;
 /**
 * @param {number} address
 * @returns {number}
@@ -228,18 +195,6 @@ export class MemoryDetails {
 */
 export class Ppu {
   free(): void;
-/**
-* @param {number} index
-* @returns {Uint8Array}
-*/
-  bg_tilemap(index: number): Uint8Array;
-/**
-* Returns a vector of the tiles stored in VRAM, interpreting their bytes based on the given
-* parameters.
-* @param {boolean} more_colors
-* @returns {(Tile)[]}
-*/
-  debug_tiles(more_colors: boolean): (Tile)[];
 }
 /**
 */
@@ -253,22 +208,26 @@ export class PpuDetails {
 */
   bg_mode: number;
 }
-/**
-* A collection of colors that make up the 8x8 tile
-* Each pixel is called a dot
-*/
-export class Tile {
-  free(): void;
-}
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
-  readonly memory: WebAssembly.Memory;
-  readonly disassemble_arm: (a: number, b: number) => void;
-  readonly disassemble_thumb: (a: number, b: number) => void;
+  readonly __wbg_gba_free: (a: number) => void;
+  readonly gba_new: () => number;
+  readonly gba_load_rom: (a: number, b: number, c: number) => void;
+  readonly gba_set_pause: (a: number, b: number, c: number) => void;
+  readonly gba_set_screen_array: (a: number, b: number) => void;
+  readonly gba_request_screen_draw: (a: number, b: number) => void;
+  readonly gba_request_cpu_debug_info: (a: number, b: number) => void;
+  readonly gba_process_responses: (a: number, b: number) => void;
+  readonly __wbg_cpudebuginfo_free: (a: number) => void;
+  readonly __wbg_get_cpudebuginfo_pc: (a: number) => number;
+  readonly __wbg_set_cpudebuginfo_pc: (a: number, b: number) => void;
+  readonly wasm_thread_entry_point: (a: number) => void;
   readonly __wbg_memorydetails_free: (a: number) => void;
   readonly memorydetails_vram: (a: number) => number;
+  readonly disassemble_arm: (a: number, b: number) => void;
+  readonly disassemble_thumb: (a: number, b: number) => void;
   readonly __wbg_cpudetails_free: (a: number) => void;
   readonly __wbg_get_cpudetails_executing_pc: (a: number, b: number) => void;
   readonly __wbg_set_cpudetails_executing_pc: (a: number, b: number, c: number) => void;
@@ -277,40 +236,10 @@ export interface InitOutput {
   readonly cpudetails_spsr: (a: number, b: number, c: number) => void;
   readonly cpudetails_mode: (a: number) => number;
   readonly cpudetails_pc: (a: number) => number;
-  readonly __wbg_tile_free: (a: number) => void;
-  readonly __wbg_backgroundinfo_free: (a: number) => void;
-  readonly __wbg_get_backgroundinfo_priority: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_priority: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_character_base_block: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_character_base_block: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_mosaic: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_mosaic: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_use_256_colors: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_use_256_colors: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_screen_base_block: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_screen_base_block: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_wraparound: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_wraparound: (a: number, b: number) => void;
-  readonly __wbg_get_backgroundinfo_screen_size: (a: number) => number;
-  readonly __wbg_set_backgroundinfo_screen_size: (a: number, b: number) => void;
-  readonly ppu_bg_tilemap: (a: number, b: number, c: number) => void;
-  readonly ppu_debug_tiles: (a: number, b: number, c: number) => void;
-  readonly gbacore_debug_bg_tilemap: (a: number, b: number, c: number) => void;
-  readonly gbacore_draw_palettes: (a: number, b: number, c: number) => void;
-  readonly gbacore_draw_tiles: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly gbacore_background_info: (a: number, b: number) => number;
-  readonly gbacore_background_mode: (a: number) => number;
-  readonly gbacore_new: () => number;
-  readonly gbacore_pc_history: (a: number, b: number) => void;
-  readonly gbacore_inspect_cpu: (a: number) => number;
-  readonly gbacore_inspect_ppu: (a: number) => number;
-  readonly gbacore_inspect_memory: (a: number) => number;
-  readonly gbacore_tilemap: (a: number, b: number) => number;
-  readonly gbacore_ie_reg: (a: number) => number;
-  readonly gbacore_if_reg: (a: number) => number;
   readonly __wbg_gbacore_free: (a: number) => void;
   readonly __wbg_get_gbacore_stopped: (a: number) => number;
   readonly __wbg_set_gbacore_stopped: (a: number, b: number) => void;
+  readonly gbacore_pc: (a: number) => number;
   readonly gbacore_read_halfword: (a: number, b: number) => number;
   readonly gbacore_thumb_state: (a: number) => number;
   readonly gbacore_tick: (a: number) => void;
@@ -320,6 +249,7 @@ export interface InitOutput {
   readonly gbacore_skip_bios: (a: number) => void;
   readonly gbacore_reset: (a: number) => number;
   readonly gbacore_enable_debugger: (a: number, b: number) => void;
+  readonly gbacore_set_stopped: (a: number, b: number) => void;
   readonly gbacore_arm_breakpoints: (a: number, b: number) => void;
   readonly gbacore_thumb_breakpoints: (a: number, b: number) => void;
   readonly gbacore_add_arm_breakpoint: (a: number, b: number) => void;
@@ -328,17 +258,21 @@ export interface InitOutput {
   readonly gbacore_remove_thumb_breakpoint: (a: number, b: number) => void;
   readonly gbacore_read_address: (a: number, b: number) => number;
   readonly gbacore_set_key: (a: number, b: number, c: number) => void;
-  readonly gbacore_set_stopped: (a: number, b: number) => void;
   readonly __wbg_ppu_free: (a: number) => void;
   readonly __wbg_ppudetails_free: (a: number) => void;
   readonly __wbg_get_ppudetails_bg_mode: (a: number) => number;
   readonly __wbg_set_ppudetails_bg_mode: (a: number, b: number) => void;
   readonly ppudetails_screen: (a: number) => number;
+  readonly memory: WebAssembly.Memory;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_3: WebAssembly.Table;
+  readonly _dyn_core__ops__function__FnMut___A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hfb1e08cca19b5774: (a: number, b: number, c: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_exn_store: (a: number) => void;
+  readonly __wbindgen_thread_destroy: (a?: number, b?: number) => void;
+  readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
@@ -347,17 +281,19 @@ export type SyncInitInput = BufferSource | WebAssembly.Module;
 * a precompiled `WebAssembly.Module`.
 *
 * @param {SyncInitInput} module
+* @param {WebAssembly.Memory} maybe_memory
 *
 * @returns {InitOutput}
 */
-export function initSync(module: SyncInitInput): InitOutput;
+export function initSync(module: SyncInitInput, maybe_memory?: WebAssembly.Memory): InitOutput;
 
 /**
 * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
 * for everything else, calls `WebAssembly.instantiate` directly.
 *
 * @param {InitInput | Promise<InitInput>} module_or_path
+* @param {WebAssembly.Memory} maybe_memory
 *
 * @returns {Promise<InitOutput>}
 */
-export default function __wbg_init (module_or_path?: InitInput | Promise<InitInput>): Promise<InitOutput>;
+export default function __wbg_init (module_or_path?: InitInput | Promise<InitInput>, maybe_memory?: WebAssembly.Memory): Promise<InitOutput>;

@@ -1,7 +1,8 @@
-import { gba } from './gbaStore';
-import { Key } from './pkg/debug/gba_core';
+import { gbaStore } from './gbaStore';
+import { Key } from './pkg/debug/gba_web';
 
 export const handleKeyDown = (event: KeyboardEvent) => {
+	/*
 	const key = getKey(event);
 	if (key === undefined) return;
 
@@ -12,9 +13,11 @@ export const handleKeyDown = (event: KeyboardEvent) => {
 
 		return details;
 	});
+    */
 };
 
 export const handleKeyUp = (event: KeyboardEvent) => {
+	/*
 	const key = getKey(event);
 	if (key === undefined) return;
 
@@ -25,9 +28,11 @@ export const handleKeyUp = (event: KeyboardEvent) => {
 
 		return details;
 	});
+        */
 };
 
 const getKey = (event: KeyboardEvent): Key | undefined => {
+	/*
 	const keyMap: Record<string, Key> = {
 		x: Key.A,
 		z: Key.B,
@@ -41,4 +46,5 @@ const getKey = (event: KeyboardEvent): Key | undefined => {
 		s: Key.R
 	};
 	return keyMap[event.key];
+        */
 };

@@ -17,10 +17,21 @@ num-traits = "0.2.16"
 pretty_env_logger = "0.5.0"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-wasm-bindgen = "0.2.87"
-js-sys = "0.3.64"
-console_error_panic_hook = "0.1.7"
-web-sys = { version = "0.3.64", features = ["console", "CanvasRenderingContext2d", "ImageBitmap", "ImageData", "HtmlCanvasElement"] }
+wasm-bindgen = { version = "0.2.87", optional = true }
+js-sys = { version = "0.3.64", optional = true }
+console_error_panic_hook = { version = "0.1.7", optional = true }
+web-sys = { version = "0.3.64", optional = true, features = [
+    "console", 
+    "CanvasRenderingContext2d", 
+    "ImageBitmap", 
+    "ImageData", 
+    "HtmlCanvasElement",
+    "Window",
+    "Worker",
+    "Document",
+    "HtmlInputElement",
+    "MessageEvent",
+] }
 serde = { version = "1.0.188", features = ["derive"] }
 serde-wasm-bindgen = "0.5.0"
 
@@ -33,5 +44,11 @@ lto = true
 #codegen-units = 1
 
 [features]
-default = ["debugger"]
+default = ["gui"]
 debugger = []
+gui = ["dep:js-sys", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys"]
+
+[[bin]]
+name="gui"
+path="src/gui/main.rs"
+required-featuers=["gui"]

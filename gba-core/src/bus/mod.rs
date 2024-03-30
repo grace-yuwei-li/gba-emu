@@ -4,6 +4,7 @@ pub use io_map::Key;
 pub use io_map::{Interrupt, IoMap};
 use num_traits::{AsPrimitive, FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
+use js_sys;
 
 use crate::{
     cpu::Cpu,
@@ -11,14 +12,14 @@ use crate::{
     utils::{get, set, AddressableBits},
 };
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub struct MemoryDetails {
     vram: Vec<u8>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 impl MemoryDetails {
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(feature="debugger", wasm_bindgen(getter))]
     pub fn vram(&self) -> js_sys::Uint8Array {
         js_sys::Uint8Array::from(&self.vram[..])
     }

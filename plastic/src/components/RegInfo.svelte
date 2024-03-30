@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { gba } from '$lib/gbaStore';
+	import { gbaStore } from '$lib/gbaStore';
 	import Psr from './Psr.svelte';
 
 	enum Mode {
@@ -12,8 +12,14 @@
 		FIQ = 'FIQ'
 	}
 
-	$: cpuDetails = $gba?.cpu;
-
+	//$: cpuDetails = $gba?.cpu;
+    function showReg(index: number, mode: Mode) {
+        return false;
+    }
+    function getReg(index: number, mode: Mode) {
+        return 0
+    }
+    /*
 	$: getReg = (index: number, mode: Mode) => {
 		return cpuDetails?.reg(index, { type: mode });
 	};
@@ -33,10 +39,17 @@
 				return 8 <= index && index <= 14;
 		}
 	};
+    */
 
+    /*
     $: ie_reg = $gba?.gba.ie_reg();
     $: if_reg = $gba?.gba.if_reg();
     $: ime_reg = $gba?.gba.read_halfword(0x4000208);
+    */
+    let ie_reg = 0
+    let if_reg = 0
+    let ime_reg = 0
+
 </script>
 
 <table>
@@ -44,9 +57,11 @@
 		<tr>
 			<th />
 			{#each Object.values(Mode) as mode, i (i)}
+                <!--
 				<th class={mode === cpuDetails?.mode().type ? 'strong' : ''}>
 					{mode}
 				</th>
+                -->
 			{/each}
 		</tr>
 	</thead>
@@ -79,11 +94,13 @@
 			<th>CPSR</th>
 			{#each Object.values(Mode) as mode, i (i)}
 				<td>
+                    <!--
 					{#if mode === Mode.User && cpuDetails !== undefined }
                         {cpuDetails.cpsr().toString(16)}
 					{:else}
 						-
 					{/if}
+                    -->
 				</td>
 			{/each}
 		</tr>
@@ -91,11 +108,13 @@
 			<th>SPSR</th>
 			{#each Object.values(Mode) as mode, i (i)}
 				<td>
+                    <!--
                     {#if mode !== Mode.System && mode !== Mode.User && cpuDetails !== undefined}
                         {(cpuDetails.spsr({type: mode}) ?? 0).toString(16)}
                     {:else}
                         -
                     {/if}
+                    -->
 				</td>
 			{/each}
 		</tr>

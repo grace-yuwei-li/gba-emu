@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
+	import { gbaStore } from "$lib/gbaStore";
 
     let canvas: HTMLCanvasElement;
+    let gba = $gbaStore;
 
     $: ctx = canvas?.getContext('2d');
 
@@ -9,8 +10,8 @@
     const height = 16;
 
     $: {
-        if (ctx && $gba) {
-            $gba.gba.draw_palettes(ctx)
+        if (ctx && gba) {
+            //$gba.gba.draw_palettes(ctx)
         }
     }
 </script>

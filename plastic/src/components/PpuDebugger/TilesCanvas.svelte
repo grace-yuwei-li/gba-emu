@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
+	import { gbaStore } from "$lib/gbaStore";
 
     export let palette: number;
     export let use_256_colors: boolean;
 
+    let gba = $gbaStore;
     let tiles_canvas: HTMLCanvasElement;
 
     $: ctx = tiles_canvas?.getContext('2d');
@@ -12,9 +13,9 @@
     const height = 32 * 8;
 
     $: {
-        if (ctx && $gba) {
+        if (ctx && gba) {
             const palette16 = use_256_colors ? undefined : palette;
-            $gba.gba.draw_tiles(ctx, palette16);
+            //$gba.gba.draw_tiles(ctx, palette16);
         }
     }
 </script>

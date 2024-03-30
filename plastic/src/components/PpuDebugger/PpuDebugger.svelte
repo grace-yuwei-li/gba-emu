@@ -4,8 +4,9 @@
 	import PalettesCanvas from "./PalettesCanvas.svelte";
 	import TilesCanvas from "./TilesCanvas.svelte";
 
-	import { gba } from "$lib/gbaStore";
+	import { gbaStore } from "$lib/gbaStore";
 
+    let gba = $gbaStore;
     let ppu_panel: string = "tilemaps";
 
     let palette: number = 0;
@@ -13,7 +14,8 @@
 
     let background: number = 0;
 
-    let bg_mode = $gba?.gba.background_mode();
+    //let bg_mode = $gba?.gba.background_mode();
+    let bg_mode = 0;
 
 
 </script>
@@ -73,14 +75,14 @@
     {:else if ppu_panel === "backgrounds"}
         <div>
             <h2>Background</h2>
-            <label>
-                Background
-                <input type="number" min=0 max=3 bind:value={background}>
-            </label>
             <div>
                 <span>BG Mode:</span>
                 <span>{bg_mode}</span>
             </div>
+            <label>
+                Background
+                <input type="number" min=0 max=3 bind:value={background}>
+            </label>
             <BackgroundsCanvas background={background} />
         </div>
     {/if}

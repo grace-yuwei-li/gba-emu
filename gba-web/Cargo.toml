@@ -1,0 +1,45 @@
+[package]
+name = "gba-web"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# "cdylib"
+# A dynamic system library will be produced. This is used when compiling a 
+# dynamic library to be loaded from another language. This output type will 
+# create *.so files on Linux, *.dylib files on macOS, and *.dll files on 
+# Windows.
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+gba-core = { path = "../gba-core", features=["debugger"] }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+console_error_panic_hook = "0.1.7"
+web-sys = { version = "0.3", features = [
+    "console", 
+    "CanvasRenderingContext2d", 
+    "ImageBitmap", 
+    "ImageData", 
+    "HtmlCanvasElement",
+    "Window",
+    "Worker",
+    "Document",
+    "HtmlInputElement",
+    "MessageEvent",
+    "Performance",
+    "WorkerGlobalScope",
+] }
+wasm_thread = "0.3.0"
+wasm-bindgen-futures = "0.4"
+
+[profile.release]
+lto = true
+debug = true
+codegen-units = 1
+
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+
+[unstable]
+build-std = ["panic_abort", "std"]

@@ -1,16 +1,18 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
+	import { gbaStore } from "$lib/gbaStore";
 
     export let bg: number;
 
+    let gba = $gbaStore;
     let tilemap_canvas: HTMLCanvasElement;
 
     const width = 16 * 8;
     const height = 8;
 
-    $: tilemap = $gba?.gba.tilemap(bg);
+    //$: tilemap = gba?.gba.tilemap(bg);
 
     $: {
+        /*
         if (tilemap) {
             const arr = new Uint8ClampedArray(tilemap.buffer);
             const imageData = new ImageData(arr, width, height);
@@ -23,6 +25,7 @@
                 ctx?.drawImage(bitmap, 0, 0);
             });
         }
+        */
     }
 </script>
 

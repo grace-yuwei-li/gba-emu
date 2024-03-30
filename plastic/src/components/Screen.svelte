@@ -1,11 +1,37 @@
 <script lang="ts">
-	import { gba } from "$lib/gbaStore";
+	import { gbaStore } from "$lib/gbaStore";
+	import { onMount } from "svelte";
 
-    let screen_canvas: HTMLCanvasElement;
+    let screen_canvas: HTMLCanvasElement | undefined;
+    let screen_array = new Uint8ClampedArray(240 * 160 * 4);
 
-    $: details = $gba?.ppu;
+    $: gba = $gbaStore;
+    $: {
+        if (gba) {
+            console.log("setting screen array");
+            gba.set_screen_array(screen_array)
+        }
+    }
+
+    onMount(() => {
+        const ctx = screen_canvas?.getContext('2d');
+
+        let rid = requestAnimationFrame(function update() {
+            if (gba && ctx) {
+                console.log(screen_array);
+                let imageData = new ImageData(screen_array, 240);
+                ctx.putImageData(imageData, 0, 0);
+                gba.request_screen_draw();
+                gba.request_cpu_debug_info();
+            }
+            rid = requestAnimationFrame(update);
+        });
+
+        return () => cancelAnimationFrame(rid);
+    });
 
     $: {
+        /*
         const canvas_data = details?.screen();
         if (canvas_data) {
             const imageData = new ImageData(canvas_data, 240, 160);
@@ -18,6 +44,7 @@
                 ctx?.drawImage(bitmap, 0, 0);
             });
         }
+        */
     }
 </script>
 

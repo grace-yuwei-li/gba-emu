@@ -6,6 +6,7 @@ mod debug;
 
 use num_traits::{FromBytes, ToBytes, Zero};
 use wasm_bindgen::prelude::wasm_bindgen;
+use js_sys;
 
 use crate::{
     bus::{Interrupt, IoMap},
@@ -22,7 +23,7 @@ const SCREEN_AREA: u16 = SCREEN_WIDTH * SCREEN_HEIGHT;
 const H_BLANK_WIDTH: u16 = 68;
 const V_BLANK_HEIGHT: u16 = 68;
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub struct Ppu {
     pub(crate) lcd_regs: LcdRegs,
     bg_obj_palette: Vec<u8>,
@@ -39,13 +40,13 @@ pub struct Ppu {
     screen: Vec<u8>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 pub struct PpuDetails {
     pub bg_mode: u8,
     screen: Vec<u8>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature="debugger", wasm_bindgen)]
 impl PpuDetails {
     pub fn screen(&self) -> js_sys::Uint8ClampedArray {
         let bytes = &self.screen;
@@ -323,6 +324,10 @@ impl Ppu {
         self.lcd_regs
             .dispstat
             .force_write(self.lcd_regs.dispstat.read().set_bit(bit, value));
+    }
+
+    pub fn screen(&self) -> Vec<u8> {
+        self.screen.clone()
     }
 }
 

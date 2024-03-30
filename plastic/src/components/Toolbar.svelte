@@ -1,46 +1,55 @@
 <script lang="ts">
     import { frameTimes } from '$lib/frameTimeStore';
-    import { gba, rom, reset, tick } from '$lib/gbaStore';
+    import { gbaStore, rom, reset, tick } from '$lib/gbaStore';
 
-    export let clockSpeed: number = 0;
+    export let clockSpeed: number = 8000000;
 
     let files: FileList;
+    let gba = gbaStore;
     $: averageFrameTime = $frameTimes.buffer.reduce((acc, x) => acc + x, 0) / $frameTimes.buffer.length;
 
     const resume = () => {
-        $gba?.gba.enable_debugger(false);
-        $gba?.gba.set_stopped(false);
+        /*
+        gba?.gba.enable_debugger(false);
+        gba?.gba.set_stopped(false);
         tick(1);
-        $gba?.gba.enable_debugger(true);
+        gba?.gba.enable_debugger(true);
+        */
     }
 
     const step = () => {
-        $gba?.gba.enable_debugger(false);
-        $gba?.gba.set_stopped(false);
+        /*
+        gba?.gba.enable_debugger(false);
+        gba?.gba.set_stopped(false);
         tick(1);
-        $gba?.gba.set_stopped(true);
-        $gba?.gba.enable_debugger(true);
-        $gba = $gba;
+        gba?.gba.set_stopped(true);
+        gba?.gba.enable_debugger(true);
+        gba = gba;
+        */
     }
 
     const handleReset = () => {
-        let arm_breakpoints = Array.from($gba?.gba.arm_breakpoints() ?? []);
-        let thumb_breakpoints = Array.from($gba?.gba.thumb_breakpoints() ?? []);
+        /*
+        let arm_breakpoints = Array.from(gba?.gba.arm_breakpoints() ?? []);
+        let thumb_breakpoints = Array.from(gba?.gba.thumb_breakpoints() ?? []);
         reset();
         for (const bp of arm_breakpoints) {
-            $gba?.gba.add_arm_breakpoint(bp);
+            gba?.gba.add_arm_breakpoint(bp);
         }
         for (const bp of thumb_breakpoints) {
-            $gba?.gba.add_thumb_breakpoint(bp);
+            gba?.gba.add_thumb_breakpoint(bp);
         }
+        */
     }
 
     const printPcHistory = () => {
-        const pcs = $gba?.gba.pc_history();
+        /*
+        const pcs = gba?.gba.pc_history();
         if (!pcs) return;
 
         const hexs: string[] = Array.from(pcs).map((val) => val.toString(16));
         console.log(hexs);
+        */
     }
 
     $: if (files && files[0]) {
@@ -62,8 +71,8 @@
         <input type="number" bind:value={clockSpeed} />
     </label>
     <span>Average millis/frame: {averageFrameTime.toFixed(2)}</span>
-    <span>PC: 0x{$gba?.cpu.pc().toString(16)}</span>
-    <span>Thumb: {$gba?.gba.thumb_state()}</span>
+    <!--<span>PC: 0x{gba?.cpu.pc().toString(16)}</span>-->
+    <!--<span>Thumb: {gba?.gba.thumb_state()}</span>-->
     <button on:click={printPcHistory}>PC history</button>
 </div>
 

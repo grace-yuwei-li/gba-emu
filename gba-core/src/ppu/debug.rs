@@ -3,15 +3,12 @@ use crate::GbaCore;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::Clamped;
 
-#[wasm_bindgen]
 /// A collection of colors that make up the 8x8 tile
 /// Each pixel is called a dot
 pub struct Tile {
-    #[wasm_bindgen(skip)]
     pub palette_offsets: Vec<u8>,
 }
 
-#[wasm_bindgen]
 pub struct BackgroundInfo {
     pub priority: u8,
     pub character_base_block: usize,
@@ -37,7 +34,7 @@ impl Tile {
 }
 
 #[cfg(feature = "debugger")]
-#[wasm_bindgen]
+#[cfg_attr(feature="wasm", wasm_bindgen)]
 impl Ppu {
     pub fn bg_tilemap(&self, index: usize) -> Vec<u8> {
         let num_tiles = 16;
@@ -75,7 +72,7 @@ impl Ppu {
 }
 
 #[cfg(feature = "debugger")]
-#[wasm_bindgen]
+#[cfg_attr(feature="wasm", wasm_bindgen)]
 impl GbaCore {
     pub fn debug_bg_tilemap(&self, index: usize) -> Vec<u8> {
         self.bus.ppu.bg_tilemap(index)
@@ -156,18 +153,16 @@ impl GbaCore {
     }
 
     pub fn background_info(&self, background: u32) -> BackgroundInfo {
-        let base_address = 0x4000008 + 2 * background;
-        let bg_control_low = self.bus.read_byte(base_address, &self.cpu);
-        let bg_control_high = self.bus.read_byte(base_address + 1, &self.cpu);
+        let bg_control = self.bus.ppu.lcd_regs.bgcnt[background as usize].read();
         
         BackgroundInfo {
-            priority: bg_control_low & 0b11,
-            character_base_block: usize::from((bg_control_low >> 2) & 0b11),
-            mosaic: (bg_control_low >> 6) & 1 == 1,
-            use_256_colors: (bg_control_low >> 7) & 1 == 1,
-            screen_base_block: usize::from(bg_control_high & 0b11111),
-            wraparound: (bg_control_high >> 5) & 1 == 1,
-            screen_size: (bg_control_high >> 6) & 0b11,
+            priority: (bg_control & 0b11).try_into().unwrap(),
+            character_base_block: usize::from((bg_control >> 2) & 0b11),
+            mosaic: (bg_control >> 6) & 1 == 1,
+            use_256_colors: (bg_control >> 7) & 1 == 1,
+            screen_base_block: usize::from((bg_control >> 8) & 0b11111),
+            wraparound: (bg_control >> 13) & 1 == 1,
+            screen_size: ((bg_control >> 14) & 0b11).try_into().unwrap(),
         }
     }
 

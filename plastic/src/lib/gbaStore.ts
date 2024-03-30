@@ -1,16 +1,17 @@
 import { get, writable } from 'svelte/store';
-import initWasm, { CpuDetails, GbaCore, PpuDetails } from '$lib/pkg/debug/gba_core';
+import initWasm, { Gba } from '$lib/pkg/debug/gba_web';
 
-interface GbaDetails {
-	gba: GbaCore;
-	cpu: CpuDetails;
-	ppu: PpuDetails;
+class MockGba {
+	free() {}
+
+	screen() {}
 }
 
-export const gba = writable<GbaDetails | undefined>(undefined);
+export const gbaStore = writable<Gba | undefined>(undefined);
 export const rom = writable<Uint8Array | undefined>(undefined);
 
 export const reset = () => {
+	/*
 	gba.update((old) => {
 		if (old) {
 			old.gba.free();
@@ -33,9 +34,11 @@ export const reset = () => {
 			ppu: emu.inspect_ppu()
 		};
 	});
+    */
 };
 
 export const tick = (numTicks: number) => {
+	/*
 	gba.update((details) => {
 		if (document.hidden) {
 			return details;
@@ -56,10 +59,10 @@ export const tick = (numTicks: number) => {
 			ppu: details.gba.inspect_ppu()
 		};
 	});
+*/
 };
 
 export const init = async () => {
 	await initWasm();
-
-	reset();
+	gbaStore.set(new Gba());
 };

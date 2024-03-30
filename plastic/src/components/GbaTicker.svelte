@@ -1,39 +1,33 @@
 <script lang="ts">
-	import { init, tick } from '$lib/gbaStore';
+	import { init, gbaStore } from '$lib/gbaStore';
     import { addFrameTime } from '$lib/frameTimeStore';
 	import { onMount } from 'svelte';
 
     export let clockSpeed: number;
+    $: gba = $gbaStore;
 
     let start: number;
     let tickDebt: number = 0;
+    let rid: number;
 
     const tickGba: FrameRequestCallback = (timestamp) => {
-        if (start === undefined) {
-            start = timestamp; 
+        if (gba) {
+            gba.process_responses();
+        } else {
+
         }
-        const elapsedMillis = timestamp - start;
-
-        tickDebt += clockSpeed * elapsedMillis / 1000;
-
-        const numTicks = Math.floor(tickDebt);
-
-        // Record how long this frame takes
-        const frameStart = performance.now();
-        tick(numTicks);
-        const frameEnd = performance.now();
-        addFrameTime(frameEnd - frameStart);
-
-        tickDebt -= numTicks
-
-        start = timestamp;
-
-        requestAnimationFrame(tickGba);
+        rid = requestAnimationFrame(tickGba);
     }
 
-	onMount(async () => {
-        await init();
+	onMount(() => {
+        async function foo() {
+            await init();
+        }
+        foo();
 
-        requestAnimationFrame(tickGba);
+        rid = requestAnimationFrame(tickGba);
+
+        // Maybe we should free the old GBA as well?
+        return () => cancelAnimationFrame(rid);
 	});
 </script>
