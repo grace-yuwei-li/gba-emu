@@ -77,9 +77,15 @@ export class Gba {
 */
   constructor();
 /**
+* Load a rom
 * @param {Uint8Array} rom
 */
   load_rom(rom: Uint8Array): void;
+/**
+* @param {Key} key
+* @param {boolean} pressed
+*/
+  set_key(key: Key, pressed: boolean): void;
 /**
 * Pause the GBA execution
 * @param {boolean} pause
@@ -214,7 +220,8 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly __wbg_gba_free: (a: number) => void;
   readonly gba_new: () => number;
-  readonly gba_load_rom: (a: number, b: number, c: number) => void;
+  readonly gba_load_rom: (a: number, b: number, c: number, d: number) => void;
+  readonly gba_set_key: (a: number, b: number, c: number, d: number) => void;
   readonly gba_set_pause: (a: number, b: number, c: number) => void;
   readonly gba_set_screen_array: (a: number, b: number) => void;
   readonly gba_request_screen_draw: (a: number, b: number) => void;

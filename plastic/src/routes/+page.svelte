@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { handleKeyDown, handleKeyUp } from "$lib/keys";
+    import { gbaStore } from "$lib/gbaStore";
+	import { handleKey } from "$lib/keys";
 	import Debugger from "../components/Debugger/Debugger.svelte";
 	import PpuDebugger from "../components/PpuDebugger/PpuDebugger.svelte";
 	import EmuInfo from "../components/EmuInfo.svelte";
@@ -10,13 +11,15 @@
     let clockSpeed: number;
     let leftPanel: string = "instructions";
 
+    $: gba = $gbaStore;
+
     function selectLeftPanel(event: any) {
         leftPanel = event.currentTarget?.value;
     }
 
 </script>
 
-<GbaTicker clockSpeed={clockSpeed} />
+<GbaTicker />
 <Toolbar bind:clockSpeed={clockSpeed} />
 <div id="main">
     <div>
@@ -41,7 +44,7 @@
             <EmuInfo />
         </div>
         <div class="row">
-            <div id="screen-wrapper" on:keydown={handleKeyDown} on:keyup={handleKeyUp} tabindex={0}>
+            <div id="screen-wrapper" on:keydown={(evt) => handleKey(gba, evt, true)} on:keyup={(evt) => handleKey(gba, evt, false)} tabindex={0}>
                 <Screen />
             </div>
         </div>

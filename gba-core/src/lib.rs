@@ -5,6 +5,7 @@ mod ppu;
 mod utils;
 
 pub use bus::Bus;
+pub use bus::Key;
 pub use cpu::Cpu;
 pub use gba::GbaCore;
 pub use ppu::Ppu;

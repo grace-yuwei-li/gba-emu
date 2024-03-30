@@ -1,38 +1,13 @@
-import { gbaStore } from './gbaStore';
-import { Key } from './pkg/debug/gba_web';
+import { Gba, Key } from '$lib/pkg/debug/gba_web';
 
-export const handleKeyDown = (event: KeyboardEvent) => {
-	/*
+export const handleKey = (gba: Gba | undefined, event: KeyboardEvent, pressed: boolean) => {
 	const key = getKey(event);
-	if (key === undefined) return;
-
-	gba.update((details) => {
-		if (!details) return details;
-
-		details.gba.set_key(key, true);
-
-		return details;
-	});
-    */
-};
-
-export const handleKeyUp = (event: KeyboardEvent) => {
-	/*
-	const key = getKey(event);
-	if (key === undefined) return;
-
-	gba.update((details) => {
-		if (!details) return details;
-
-		details.gba.set_key(key, false);
-
-		return details;
-	});
-        */
+	if (key && gba) {
+		gba.set_key(key, pressed);
+	}
 };
 
 const getKey = (event: KeyboardEvent): Key | undefined => {
-	/*
 	const keyMap: Record<string, Key> = {
 		x: Key.A,
 		z: Key.B,
@@ -46,5 +21,4 @@ const getKey = (event: KeyboardEvent): Key | undefined => {
 		s: Key.R
 	};
 	return keyMap[event.key];
-        */
 };

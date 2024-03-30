@@ -2,7 +2,8 @@
 /* eslint-disable */
 export function __wbg_gba_free(a: number): void;
 export function gba_new(): number;
-export function gba_load_rom(a: number, b: number, c: number): void;
+export function gba_load_rom(a: number, b: number, c: number, d: number): void;
+export function gba_set_key(a: number, b: number, c: number, d: number): void;
 export function gba_set_pause(a: number, b: number, c: number): void;
 export function gba_set_screen_array(a: number, b: number): void;
 export function gba_request_screen_draw(a: number, b: number): void;
