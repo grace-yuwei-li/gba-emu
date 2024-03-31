@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-        "wasm": "npx wasm-pack build --release ../gba-web --target web -- -Z build-std=std,panic_abort && mkdir -p ./src/lib/pkg/debug/ && cp -r ../gba-web/pkg/* ./src/lib/pkg/debug/",
+		"wasm": "npx wasm-pack build --release ../gba-web --target web -- -Z build-std=std,panic_abort && mkdir -p ./src/lib/pkg/debug/ && cp -r ../gba-web/pkg/* ./src/lib/pkg/debug/",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
@@ -13,8 +13,8 @@
 		"format": "prettier --plugin-search-dir . --write ."
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^2.0.0",
-		"@sveltejs/kit": "^1.20.4",
+		"@sveltejs/adapter-static": "^3.0.1",
+		"@sveltejs/kit": "^2.5.5",
 		"@typescript-eslint/eslint-plugin": "^5.45.0",
 		"@typescript-eslint/parser": "^5.45.0",
 		"eslint": "^8.28.0",
@@ -26,8 +26,11 @@
 		"svelte-check": "^3.4.3",
 		"tslib": "^2.4.1",
 		"typescript": "^5.0.0",
-		"vite": "^4.4.2",
-        "wasm-pack": "^0.12.1"
+		"vite": "^5.2.7",
+		"wasm-pack": "^0.12.1"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"@sveltejs/vite-plugin-svelte": "^3.0.2"
+	}
 }
