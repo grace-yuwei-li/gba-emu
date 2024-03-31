@@ -40,7 +40,7 @@ pub struct Bus {
 impl Default for Bus {
     fn default() -> Self {
         Self {
-            bios: include_bytes!("../../og-bios.bin").to_vec(),
+            bios: include_bytes!("../../cog-bios.bin").to_vec(),
             ew_ram: vec![0; 0x40000],
             iw_ram: vec![0; 0x8000],
 

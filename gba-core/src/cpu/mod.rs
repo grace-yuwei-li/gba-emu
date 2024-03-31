@@ -346,7 +346,7 @@ mod tests {
         let mut cpu = Cpu::default();
         let mut bus = Bus::default();
         let (arm_lut, thumb_lut) = generate_luts();
-        bus.set_bios(include_bytes!("../../og-bios.bin"));
+        bus.set_bios(include_bytes!("../../cog-bios.bin"));
 
         cpu.skip_bios();
         cpu.set_reg_with_mode(0, Mode::System, r0);
