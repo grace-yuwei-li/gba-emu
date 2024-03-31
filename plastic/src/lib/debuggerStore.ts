@@ -8,9 +8,6 @@ interface DebuggerData {
 	bg_tile_array: Uint8ClampedArray;
 }
 
-// We will always use the same array
-let screen_array = new Uint8ClampedArray(240 * 160 * 4);
-
 const initialData: DebuggerData = {
 	screen_array: new Uint8ClampedArray(240 * 160 * 4),
 	bg_palette_array: new Uint8ClampedArray(16 * 16 * 4),
@@ -22,7 +19,7 @@ export const debuggerStore = writable<DebuggerData>(initialData);
 gbaStore.subscribe((gba) => {
 	if (gba) {
 		console.log('Setting screen array');
-		gba.set_screen_array(screen_array);
+		gba.set_screen_array(initialData.screen_array);
 	}
 });
 
