@@ -5,7 +5,7 @@
     export let clockSpeed: number = 8000000;
 
     let files: FileList;
-    let gba = gbaStore;
+    $: gba = $gbaStore;
     $: averageFrameTime = $frameTimes.buffer.reduce((acc, x) => acc + x, 0) / $frameTimes.buffer.length;
 
     const resume = () => {
@@ -55,6 +55,9 @@
     $: if (files && files[0]) {
         files[0].arrayBuffer().then((array) => {
             let bytes = new Uint8Array(array);
+            if (gba) {
+                gba.load_rom(bytes);
+            }
             $rom = bytes;
             reset();
         })

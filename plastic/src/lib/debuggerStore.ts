@@ -1,16 +1,20 @@
-import { get, writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { gbaStore } from './gbaStore';
 import type { Gba } from './pkg/debug/gba_web';
 
 interface DebuggerData {
 	screen_array: Uint8ClampedArray;
+	bg_palette_array: Uint8ClampedArray;
+	bg_tile_array: Uint8ClampedArray;
 }
 
 // We will always use the same array
 let screen_array = new Uint8ClampedArray(240 * 160 * 4);
 
 const initialData: DebuggerData = {
-	screen_array
+	screen_array: new Uint8ClampedArray(240 * 160 * 4),
+	bg_palette_array: new Uint8ClampedArray(16 * 16 * 4),
+	bg_tile_array: new Uint8ClampedArray(1024 * 8 * 8 * 4)
 };
 
 export const debuggerStore = writable<DebuggerData>(initialData);

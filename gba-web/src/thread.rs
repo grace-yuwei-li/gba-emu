@@ -54,7 +54,9 @@ impl GbaThread {
                         self.control_state.update(event);
                     }
                     Event::LoadRom(rom) => {
+                        self.gba = GbaCore::default();
                         self.gba.load_rom(&rom);
+                        self.gba.skip_bios();
                     }
                     Event::ScreenData => {
                         screen_render = true;
